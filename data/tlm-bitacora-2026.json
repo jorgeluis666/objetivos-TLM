@@ -1,0 +1,15 @@
+{
+  "year": 2026,
+  "updatedAt": "2026-10-05",
+  "items": [
+    { "id": "b01", "date": "2026-01-12", "type": "cambio", "area": "general", "done": true, "text": "Punto de partida: 3 campañas (Ventas, Mensajes y Reconocimiento) con S/ 900.00 en el mes; la pauta arranca el 12 de enero" },
+    { "id": "b02", "date": "2026-02-01", "type": "comentario", "area": "general", "done": false, "text": "La hoja de febrero en Drive repite los datos de enero: reemplazarla con la exportación de febrero" },
+    { "id": "b03", "date": "2026-03-05", "type": "cambio", "area": "ventas", "done": true, "text": "Ventas sube de S/ 321.93 a S/ 571.74 (+78%) con Back to school y Summer sale 50% OFF: 29 compras por S/ 3,720.19 (ROAS 6.51)" },
+    { "id": "b04", "date": "2026-04-06", "type": "cambio", "area": "ventas", "done": true, "text": "Ventas baja a S/ 480.31 (-16%) y las compras caen de 29 a 7" },
+    { "id": "b05", "date": "2026-04-06", "type": "comentario", "area": "mensajes", "done": true, "text": "Las conversaciones de WhatsApp suben de 79 a 196 con el anuncio Aretitos en oro de 18k" },
+    { "id": "b06", "date": "2026-06-03", "type": "cambio", "area": "reconocimiento", "done": true, "text": "Reconocimiento sube de S/ 359.87 a S/ 480.06 (+33%) con Baby Shower pronto" },
+    { "id": "b07", "date": "2026-07-02", "type": "cambio", "area": "general", "done": true, "text": "Mensajes sube de S/ 290.13 a S/ 605.84 (+109%) y Reconocimiento baja de S/ 480.06 a S/ 181.54 (-62%)" },
+    { "id": "b08", "date": "2026-09-02", "type": "cambio", "area": "ventas", "done": true, "text": "Ventas baja de S/ 451.37 a S/ 299.85 (-34%)" },
+    { "id": "b09", "date": "2026-10-01", "type": "cambio", "area": "ventas", "done": false, "text": "Octubre arranca con el anuncio 40% Off: 2 compras por S/ 227.90 al 4 de octubre" }
+  ]
+}
