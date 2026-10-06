@@ -17,6 +17,8 @@
     #rb-auth-btn{width:100%;padding:12px;border-radius:8px;border:none;background:var(--rb-accent,#2563eb);color:#fff;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.02em;transition:background .15s;font-family:inherit}
     #rb-auth-btn:hover{background:var(--rb-accent-dark,#1d4ed8)}
     #rb-auth-error{display:none;margin-top:12px;font-size:12px;color:#dc2626;font-family:inherit}
+    #rb-auth-remember{display:flex;align-items:center;gap:8px;color:#475569;font-size:13px;cursor:pointer;font-family:inherit}
+    #rb-auth-remember input{width:16px;height:16px;margin:0;accent-color:var(--rb-accent,#2563eb)}
     /* El degradado es la capa de respaldo: si la imagen falta o falla, el panel
        derecho sigue siendo opaco y nunca deja ver el dashboard detras. */
     #rb-auth-bg{flex:1;min-width:0;align-self:stretch;background-color:#0f172a;background-image:linear-gradient(140deg,var(--rb-accent,#2563eb) 0%,var(--rb-accent-dark,#1d4ed8) 38%,#0f172a 100%);background-size:cover;background-position:center;background-repeat:no-repeat;filter:grayscale(20%)}
@@ -41,6 +43,15 @@
     const channel = shift => Math.round(((value >> shift) & 255) * (1 - amount));
     return `#${[channel(16), channel(8), channel(0)].map(n => n.toString(16).padStart(2, '0')).join('')}`;
   }
+  // Huella corta de la clave (FNV-1a): solo sirve para notar que la clave cambio; la clave ya viaja en el HTML.
+  function fingerprint(text) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return 'v1-' + hash.toString(16);
+  }
   function init(opts) {
     opts = opts || {};
     const PASSWORD = opts.password || 'RB2026';
@@ -59,7 +70,7 @@
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Acceso');
-    overlay.innerHTML = `<div id="rb-auth-panel"><div id="rb-auth-inner"><div id="rb-auth-brand">${BRAND}</div><div id="rb-auth-title">${TITLE}</div><div id="rb-auth-divider"></div><form id="rb-auth-form" autocomplete="off"><input id="rb-auth-input" type="password" placeholder="Contraseña" aria-label="Contraseña" autocomplete="new-password" autofocus /><button type="submit" id="rb-auth-btn">Ingresar</button></form><div id="rb-auth-error" role="alert">Contraseña incorrecta</div></div></div><div id="rb-auth-bg"></div>`;
+    overlay.innerHTML = `<div id="rb-auth-panel"><div id="rb-auth-inner"><div id="rb-auth-brand">${BRAND}</div><div id="rb-auth-title">${TITLE}</div><div id="rb-auth-divider"></div><form id="rb-auth-form" autocomplete="off"><input id="rb-auth-input" type="password" placeholder="Contraseña" aria-label="Contraseña" autocomplete="new-password" autofocus /><label id="rb-auth-remember"><input id="rb-auth-remember-check" type="checkbox" /> Recordar en este equipo</label><button type="submit" id="rb-auth-btn">Ingresar</button></form><div id="rb-auth-error" role="alert">Contraseña incorrecta</div></div></div><div id="rb-auth-bg"></div>`;
     overlay.style.setProperty('--rb-accent', ACCENT);
     overlay.style.setProperty('--rb-accent-dark', ACCENT_DARK);
     document.body.insertBefore(overlay, document.body.firstChild);
@@ -71,17 +82,36 @@
     background.src = BG_IMAGE;
     const previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
+    // Se guarda una huella de la clave (no la clave): si la clave cambia, lo guardado deja de servir.
+    // Con "Recordar en este equipo" queda tambien en localStorage y sobrevive al cerrar el navegador.
+    const TOKEN = fingerprint(PASSWORD);
+    function hasAccess() {
+      for (const name of ['sessionStorage', 'localStorage']) {
+        try { if (global[name].getItem(SESSION_KEY) === TOKEN) return true; } catch (e) { /* storage bloqueado */ }
+      }
+      return false;
+    }
+    function saveAccess(persistent) {
+      try { sessionStorage.setItem(SESSION_KEY, TOKEN); } catch (e) { /* storage bloqueado */ }
+      try {
+        if (persistent) localStorage.setItem(SESSION_KEY, TOKEN);
+        else localStorage.removeItem(SESSION_KEY);
+      } catch (e) { /* storage bloqueado */ }
+    }
     function unlock() {
       overlay.classList.add('rb-auth-hidden');
       document.documentElement.style.overflow = previousOverflow;
-      sessionStorage.setItem(SESSION_KEY, '1');
     }
-    if (sessionStorage.getItem(SESSION_KEY) === '1') { unlock(); return; }
+    if (hasAccess()) { unlock(); return; }
     document.getElementById('rb-auth-form').addEventListener('submit', function (event) {
       event.preventDefault();
       const input = document.getElementById('rb-auth-input');
       const error = document.getElementById('rb-auth-error');
-      if (input.value === PASSWORD) { error.style.display = 'none'; unlock(); }
+      if (input.value === PASSWORD) {
+        error.style.display = 'none';
+        saveAccess(document.getElementById('rb-auth-remember-check').checked);
+        unlock();
+      }
       else { input.value = ''; error.style.display = 'block'; input.focus(); }
     });
   }
