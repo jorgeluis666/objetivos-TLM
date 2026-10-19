@@ -61,6 +61,47 @@
   }
   function monthData(name) { return state.data.months.find(month => month.name === name); }
   function hasData(month) { return Boolean(month?.kpis); }
+  // Pestana "Anual" junto a las de mes (como en Terminal Pesquero): acumula todos los meses con datos.
+  const ANNUAL = 'Anual';
+  function current() { return state.month === ANNUAL ? annualMonth() : monthData(state.month); }
+  function sumInto(target, source, skip = []) {
+    Object.entries(source).forEach(([key, value]) => {
+      if (typeof value === 'number' && !skip.includes(key)) target[key] = (target[key] || 0) + value;
+    });
+  }
+  // Las campanas y sus mejores anuncios de todo el ano, sumados por nombre.
+  function annualMonth() {
+    const months = state.data.months.filter(hasData);
+    const kpis = {}, spendByGroup = {}, campaigns = new Map();
+    months.forEach(month => {
+      sumInto(kpis, month.kpis);
+      Object.entries(month.spendByGroup || {}).forEach(([group, value]) => { spendByGroup[group] = (spendByGroup[group] || 0) + value; });
+      month.campaigns.forEach(campaign => {
+        const item = campaigns.get(campaign.name) || { name: campaign.name, objective: campaign.objective, group: campaign.group, ads: new Map() };
+        sumInto(item, campaign, ['cpm', 'cpc']);
+        (campaign.topAds || []).forEach(ad => {
+          const merged = item.ads.get(ad.name) || { name: ad.name, url: ad.url };
+          sumInto(merged, ad);
+          if (!merged.url && ad.url) merged.url = ad.url;
+          item.ads.set(ad.name, merged);
+        });
+        campaigns.set(campaign.name, item);
+      });
+    });
+    const order = { Ventas: 0, Mensajes: 1, Reconocimiento: 2 };
+    const sortKeys = { Ventas: ['purchases', 'revenue', 'clicks'], Mensajes: ['conversations', 'profileVisits', 'clicks'], Reconocimiento: ['thruplays', 'impressions'] };
+    const list = [...campaigns.values()].map(({ ads, ...campaign }) => {
+      const keys = sortKeys[campaign.group] || ['clicks'];
+      const topAds = [...ads.values()].sort((a, b) => keys.reduce((diff, key) => diff || (b[key] || 0) - (a[key] || 0), 0) || b.spend - a.spend).slice(0, 5);
+      return { ...campaign, cpm: campaign.impressions ? campaign.spend / campaign.impressions * 1000 : null, cpc: campaign.clicks ? campaign.spend / campaign.clicks : null, topAds };
+    }).sort((a, b) => (order[a.group] ?? 3) - (order[b.group] ?? 3) || b.spend - a.spend);
+    const last = months[months.length - 1];
+    return {
+      name: ANNUAL, annual: true, months, kpis, spendByGroup, campaigns: list,
+      status: last?.status, firstDay: months[0]?.firstDay, lastDay: last?.lastDay,
+      period: last ? `${months[0].name} a ${last.name} 2026` : '',
+    };
+  }
   function longDate(iso) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
     return match ? `${Number(match[3])} de ${MONTHS[Number(match[2]) - 1].toLowerCase()}` : '-';
@@ -98,18 +139,20 @@
   }
 
   // ── KPIs acumulados del año ────────────────────────────────────────────────
-  function yearTotals() {
-    const months = state.data.months.filter(hasData);
+  function yearTotals(months = state.data.months.filter(hasData)) {
     const totals = { spend: 0, revenue: 0, purchases: 0, conversations: 0, clicks: 0, landingViews: 0, months: months.length };
     months.forEach(month => Object.keys(totals).forEach(key => { if (key !== 'months') totals[key] += Number(month.kpis[key] || 0); }));
     return { ...totals, sales: groupTotals(months, 'Ventas'), messages: groupTotals(months, 'Mensajes') };
   }
+  // KPIs del periodo elegido en las pestanas: un mes o el acumulado del ano.
   function renderKpis() {
     const host = document.getElementById('kpi-strip');
-    const t = yearTotals();
+    const period = current();
+    if (!period) return;
+    const t = yearTotals(period.annual ? period.months : [period]);
     const cutoff = longDate(state.data.cutoff);
     const cards = [
-      ['Inversion Meta Ads', fmtMoney(t.spend), `Acumulado al ${cutoff} | ${t.months} meses con datos`],
+      ['Inversion Meta Ads', fmtMoney(t.spend), period.annual ? `Acumulado al ${cutoff} | ${t.months} meses con datos` : `${period.period || period.name} | ${period.campaigns.length} campanas`],
       ['Valor de compras', fmtMoney(t.revenue), `ROAS ${fmtRoas(ratio(t.revenue, t.spend))} total | ${fmtRoas(ratio(t.sales.revenue, t.sales.spend))} en Ventas`],
       ['Compras', fmtCount(t.purchases), `${fmtMoney(ratio(t.sales.spend, t.sales.purchases))} por compra en Ventas`],
       ['Conversaciones', fmtCount(t.conversations), `WhatsApp | ${fmtCost(ratio(t.messages.spend, t.messages.conversations))} por conversacion`],
@@ -206,20 +249,27 @@
   // ── Mes seleccionado ───────────────────────────────────────────────────────
   function renderTabs() {
     const host = document.getElementById('month-tabs');
+    const tab = (name, available, title, mark = '') => {
+      const selected = name === state.month;
+      return `<button type="button" class="month-tab ${selected ? 'active' : ''}" data-month="${name}" aria-pressed="${selected}" ${available ? '' : 'disabled'} ${title ? `title="${esc(title)}"` : ''}>${name}${mark}</button>`;
+    };
     host.innerHTML = MONTHS.map(name => {
       const month = monthData(name);
-      const available = hasData(month);
       const partial = month?.status === 'parcial';
-      const title = partial ? `Parcial: ${month.period}` : month?.notice || '';
+      const title = partial ? `Parcial: ${month.period}` : month?.notice || (hasData(month) ? '' : 'Sin hoja de Meta en la carpeta');
       const mark = partial ? '<span class="current-dot"></span>' : month?.notice ? '<span class="warn-dot"></span>' : '';
-      return `<button type="button" class="month-tab ${name === state.month ? 'active' : ''}" data-month="${name}" ${available ? '' : 'disabled'} ${title ? `title="${esc(title)}"` : ''}>${name}${mark}</button>`;
-    }).join('');
+      return tab(name, hasData(month), title, mark);
+    }).join('') + tab(ANNUAL, state.data.months.some(hasData), 'Acumulado 2026 de los meses con datos');
   }
   function selectMonth(name) {
-    if (!hasData(monthData(name))) return;
+    if (name !== ANNUAL && !hasData(monthData(name))) return;
     state.month = name;
     state.open.clear();
-    document.querySelectorAll('#month-tabs .month-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.month === name));
+    document.querySelectorAll('#month-tabs .month-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.month === name);
+      tab.setAttribute('aria-pressed', String(tab.dataset.month === name));
+    });
+    renderKpis();
     renderMonth();
   }
   function sheetLink(month) {
@@ -227,15 +277,18 @@
     if (!id || !/^[A-Za-z0-9_-]{10,}$/.test(id)) return '';
     return `<a class="refresh-sheet-btn ads-report-link" href="https://docs.google.com/spreadsheets/d/${esc(id)}/edit" target="_blank" rel="noopener">Abrir hoja del mes</a>`;
   }
-  function renderMonthBar(month) {
-    const status = month.status === 'parcial'
-      ? `<span class="status-pill muted">Parcial | ${esc(month.period)}</span>`
-      : `<span class="status-pill green">Mes cerrado | ${esc(month.period || month.name)}</span>`;
+  // Cabecera del periodo (como en Terminal Pesquero): "Periodo: Octubre 2026 (mes en curso)" y su detalle.
+  function renderPeriod(month) {
+    const open = month.status === 'parcial';
+    document.getElementById('period-title').textContent = month.annual
+      ? `Periodo: Anual 2026${open ? ' (año en curso)' : ''}`
+      : `Periodo: ${month.name} 2026${open ? ' (mes en curso)' : ''}`;
     const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
-    const source = month.sheet ? `Fuente: hoja "${month.sheet.title}" (exportacion de Meta Ads)` : 'Fuente: exportacion de Meta Ads';
-    document.getElementById('ads-month-bar').innerHTML = `
-      <div class="ads-month-info"><strong>${esc(month.name)} 2026</strong>${status}<span class="status-pill muted">${month.campaigns.length} campanas</span><small>${esc([source, days].filter(Boolean).join(' | '))}</small></div>
-      ${sheetLink(month)}`;
+    const source = month.annual
+      ? `Acumulado de ${month.months.length} meses con datos (${month.months.map(item => SHORT_MONTHS[MONTHS.indexOf(item.name)]).join(', ')})`
+      : month.sheet ? `Hoja "${month.sheet.title}"` : 'Exportacion de Meta Ads';
+    document.getElementById('period-sub').textContent = [source, days, `${month.campaigns.length} campanas`].filter(Boolean).join(' | ');
+    document.getElementById('period-actions').innerHTML = month.annual ? '' : sheetLink(month);
   }
   function summaryCard(month) {
     const k = month.kpis;
@@ -302,7 +355,7 @@
   }
   function renderCampaigns(month) {
     const rows = month.campaigns.map((campaign, index) => ({ campaign, key: String(index) })).filter(({ campaign }) => state.group === 'all' || campaign.group === state.group);
-    document.getElementById('campaigns-title').textContent = `Campanas de ${month.name} 2026`;
+    document.getElementById('campaigns-title').textContent = month.annual ? 'Campanas de 2026 (acumulado)' : `Campanas de ${month.name} 2026`;
     document.getElementById('campaigns-sub').textContent = `${month.campaigns.length} campanas con inversion. Despliega cada fila para ver los mejores anuncios.`;
     document.querySelectorAll('#campaigns-filter .series-toggle').forEach(item => item.classList.toggle('active', item.dataset.series === state.group));
     const body = document.getElementById('campaigns-body');
@@ -331,8 +384,8 @@
     }).join('');
   }
   function renderMonth() {
-    const month = monthData(state.month);
-    renderMonthBar(month);
+    const month = current();
+    renderPeriod(month);
     document.getElementById('ads-platforms').innerHTML = summaryCard(month) + funnelCard(month);
     renderCampaigns(month);
   }
@@ -452,7 +505,7 @@
   function applyData(data) {
     state.data = data;
     const withData = data.months.filter(hasData);
-    if (!hasData(monthData(state.month))) state.month = withData[withData.length - 1]?.name || null;
+    if (state.month !== ANNUAL && !hasData(monthData(state.month))) state.month = withData[withData.length - 1]?.name || null;
     state.open.clear();
     renderAll();
   }
@@ -533,7 +586,7 @@
       const input = event.target.closest('input[type="radio"]');
       if (!input) return;
       state.group = input.value;
-      renderCampaigns(monthData(state.month));
+      renderCampaigns(current());
     });
     // "Actualizar" abre el detalle para que se vea el avance (sin que el clic lo vuelva a cerrar).
     document.getElementById('ads-sync-btn')?.addEventListener('click', event => {
@@ -547,7 +600,7 @@
       if (!button) return;
       const key = button.dataset.key;
       if (state.open.has(key)) state.open.delete(key); else state.open.add(key);
-      renderCampaigns(monthData(state.month));
+      renderCampaigns(current());
     });
   }
   async function init() {

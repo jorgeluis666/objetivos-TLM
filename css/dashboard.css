@@ -1957,3 +1957,59 @@ button.topbar-pill[aria-expanded="true"] .status-chevron {
     width: min(320px, calc(100vw - 36px));
   }
 }
+
+/* 12 meses + Anual, arriba de los indicadores (como Terminal Pesquero). */
+#month-tabs {
+  grid-template-columns: repeat(13, minmax(max-content, 1fr));
+}
+
+/* Periodo y resumen en una sola tarjeta: el texto del periodo arriba y los indicadores debajo. */
+.period-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.period-title {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+
+.period-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 1.3;
+}
+
+.period-actions {
+  flex-shrink: 0;
+}
+
+.period-actions .refresh-sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.period-panel .kpi-strip {
+  margin: 0;
+}
+
+.period-panel + .chart-panel {
+  margin-top: 18px;
+}
+
+@media(max-width:760px) {
+  .period-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
