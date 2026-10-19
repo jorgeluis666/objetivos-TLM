@@ -449,12 +449,6 @@
   padding: 8px;
 }
 
-/* "Usuarios y Claves" queda al fondo de la franja */
-.shell.sidebar-collapsed .s-item:last-of-type {
-  margin-top: auto;
-  margin-bottom: 0;
-}
-
 /* Telefono: el panel se oculta por completo */
 @media(max-width:900px) {
   .shell.sidebar-collapsed .sidebar {
@@ -1056,42 +1050,6 @@ textarea.log-text {
   .log-item .log-tag { padding: 0 4px; font-size: 11px; }
 }
 
-/* Boton de sincronizacion con Drive (cabecera de Gasto publicitario) */
-.ads-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.ads-sync {
-  display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  padding-top: 18px;
-  text-align: right;
-}
-
-.ads-sync-btn { min-width: 170px; }
-
-.ads-sync-status {
-  max-width: 280px;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.ads-sync-links { color: #94a3b8; font-size: 10px; }
-.ads-sync-links a { color: var(--brand-text); font-weight: 600; text-decoration: none; }
-.ads-sync-links a:hover { text-decoration: underline; }
-
-@media(max-width:760px) {
-  .ads-header { flex-direction: column; gap: 12px; }
-  .ads-sync { align-items: flex-start; padding-top: 0; text-align: left; }
-}
-
 /* Avisos de datos: hojas de Drive faltantes o copiadas de otro mes */
 .data-notice {
   margin: 16px 0 0;
@@ -1596,30 +1554,19 @@ body.modal-open {
   font-weight: 600;
 }
 
-/* ===== Archivo de Reportes: pestanas ===== */
+/* ===== Archivo de Reportes: pestanas (como Terminal Pesquero: Documentos en Drive y Generacion de Reporte) ===== */
 
-.reports-tabs {
+.month-tabs.reports-tabs {
   display: flex;
-  gap: 6px;
-  margin: 18px 0 14px;
-  border-bottom: 1px solid var(--border);
+  margin: 18px 0;
 }
 
-.reports-tab {
-  margin-bottom: -1px;
-  padding: 10px 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
-  background: none;
+.reports-tabs .month-tab {
+  padding: 0 16px;
   font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.reports-tab:hover { color: var(--ink); }
-.reports-tab.active { border-bottom-color: var(--brand); color: var(--brand-text); }
-.reports-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.reports-tabs .month-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* ===== Generar reporte semanal ===== */
 
@@ -1812,4 +1759,201 @@ body.modal-open {
   body.printing-week .week-edit textarea { display: none; }
   body.printing-week .week-print-text { display: block; }
   body.printing-week .table-scroll { overflow: visible !important; }
+}
+
+/* ===== Alineado con el tablero de Terminal Pesquero (referencia visual de LR) ===== */
+
+:root {
+  --brand-dark: #1f6158;
+}
+
+.panel-head {
+  align-items: center;
+}
+
+/* Titulos (panel) a 18px y sus bajadas a 16px, igual en todos los tableros. */
+.panel-title {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+
+.panel-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  line-height: 1.3;
+}
+
+/* 12 meses. Cada pestana mide al menos su texto; si no caben, la fila se desplaza en horizontal. */
+.month-tabs {
+  grid-template-columns: repeat(12, minmax(max-content, 1fr));
+}
+
+.month-tab {
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+/* En la esquina para que no ensanche ni parta el nombre del mes. */
+.month-tab .current-dot,
+.month-tab .warn-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  margin: 0;
+}
+
+.refresh-sheet-btn:hover:not(:disabled) {
+  border-color: var(--brand-dark);
+  background: var(--brand-dark);
+}
+
+.refresh-sheet-btn:disabled {
+  border-color: var(--brand);
+  background: var(--brand);
+  opacity: .6;
+  cursor: wait;
+}
+
+.topbar-pill.warn {
+  color: #b45309;
+  background: #fff7ed;
+}
+
+/* ===== Estado de la actualizacion (barra superior derecha) ===== */
+
+.data-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* La pildora es el disparador del detalle: hereda el aspecto de .topbar-pill. */
+button.topbar-pill {
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.topbar-pill:hover {
+  border-color: currentColor;
+}
+
+button.topbar-pill:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.status-chevron {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform .15s;
+}
+
+button.topbar-pill[aria-expanded="true"] .status-chevron {
+  transform: rotate(180deg);
+}
+
+.data-status-card {
+  position: absolute;
+  z-index: 140;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .14);
+}
+
+.data-status-card[hidden] {
+  display: none;
+}
+
+.data-status-head {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.data-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+}
+
+.data-status-row span {
+  flex: none;
+  color: var(--muted);
+}
+
+.data-status-row strong {
+  color: var(--ink);
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.data-status-row a {
+  color: var(--brand-text);
+  text-decoration: none;
+}
+
+.data-status-row a:hover {
+  text-decoration: underline;
+}
+
+.data-status-note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.data-status-note[hidden] {
+  display: none;
+}
+
+.data-status-note strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.data-status-note ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+@media(max-width:760px) {
+  .data-status {
+    flex-wrap: wrap;
+  }
+
+  .data-status-card {
+    right: auto;
+    left: 0;
+    width: min(320px, calc(100vw - 36px));
+  }
 }

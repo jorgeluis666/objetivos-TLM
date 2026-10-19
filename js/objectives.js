@@ -86,9 +86,13 @@
   }
 
   // ── Avisos de datos (hojas faltantes o copiadas) ───────────────────────────
+  // Los avisos de la carpeta van en el detalle de la barra superior; la pildora se pone ambar mientras haya.
   function renderWarnings() {
     const host = document.getElementById('ads-warnings');
     const warnings = state.data.warnings || [];
+    document.getElementById('data-status-btn')?.classList.toggle('warn', Boolean(warnings.length));
+    document.getElementById('data-status-btn')?.classList.toggle('ok', !warnings.length);
+    if (!host) return;
     host.hidden = !warnings.length;
     host.innerHTML = warnings.length ? `<strong>Revisar la carpeta de Drive</strong><ul>${warnings.map(text => `<li>${esc(text)}</li>`).join('')}</ul>` : '';
   }
@@ -389,11 +393,49 @@
   function setSyncStatus(text, busy = false) {
     const button = document.getElementById('ads-sync-btn');
     const status = document.getElementById('ads-sync-status');
-    if (status) status.textContent = text;
+    if (status) { status.textContent = text; status.hidden = !text; }
     if (!button) return;
     button.disabled = busy;
-    button.textContent = busy ? 'Sincronizando...' : 'Sincronizar con Drive';
+    button.textContent = busy ? 'Actualizando...' : 'Actualizar';
     button.title = syncEndpoint() ? 'Lee otra vez la carpeta de Drive y actualiza el tablero' : 'Vuelve a cargar los ultimos datos publicados';
+  }
+  // Proxima corrida automatica del workflow (7:00, 12:00 y 17:00 de Lima; GitHub puede demorarla unos minutos).
+  function nextAutoSync() {
+    const lima = new Date(Date.now() - 5 * 3600000);
+    const hour = lima.getUTCHours() + lima.getUTCMinutes() / 60;
+    const next = [7, 12, 17].find(value => value > hour);
+    const label = value => value === 12 ? '12:00 m.' : `${value > 12 ? value - 12 : value}:00 ${value < 12 ? 'a. m.' : 'p. m.'}`;
+    return next ? `Hoy, ${label(next)}` : `Manana, ${label(7)}`;
+  }
+  function renderStatus() {
+    const set = (id, text) => { const node = document.getElementById(id); if (node) node.textContent = text; };
+    const cutoff = /^(\d{4})-(\d{2})-(\d{2})$/.exec(state.data.cutoff || '');
+    const last = [...state.data.months].reverse().find(hasData);
+    set('status-data', cutoff ? `Meta Ads al ${Number(cutoff[3])} de ${MONTHS[Number(cutoff[2]) - 1].toLowerCase()}` : '-');
+    set('status-last', syncLabel(state.data).replace('Ultima sincronizacion: ', '') || '-');
+    set('status-next', nextAutoSync());
+    set('status-file', last?.sheet?.title || '-');
+  }
+  function wireStatusCard() {
+    const button = document.getElementById('data-status-btn');
+    const card = document.getElementById('data-status-card');
+    if (!button || !card) return;
+    const close = () => {
+      card.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    };
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const open = card.hidden;
+      // La proxima corrida depende de la hora: se recalcula al abrir el detalle.
+      if (open && state.data) renderStatus();
+      card.hidden = !open;
+      button.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', event => {
+      if (!card.hidden && !card.contains(event.target) && event.target !== button) close();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
   }
   // Pide al Web App que lance el workflow. POST sin cabeceras propias (sin preflight de CORS).
   async function requestSync(endpoint) {
@@ -425,7 +467,9 @@
         setSyncStatus('Buscando datos nuevos...', true);
         const data = await fetchPublishedData().catch(() => null);
         if (data && syncStamp(data) !== before) applyData(data);
-        setSyncStatus(data ? `${syncLabel(data)} | ${SYNC_SCHEDULE}` : 'No se pudieron leer los datos. Intenta en unos minutos.');
+        setSyncStatus(data
+          ? `${syncStamp(data) !== before ? 'Datos actualizados.' : 'Ya tienes los ultimos datos publicados.'} Sincronizacion ${SYNC_SCHEDULE}`
+          : 'No se pudieron leer los datos. Intenta en unos minutos.');
         return;
       }
       setSyncStatus('Leyendo la carpeta de Drive. El tablero se actualiza solo al terminar (2 a 4 minutos).', true);
@@ -450,7 +494,7 @@
     } finally {
       state.syncing = false;
       const button = document.getElementById('ads-sync-btn');
-      if (button) { button.textContent = 'Sincronizar con Drive'; button.disabled = false; }
+      if (button) { button.textContent = 'Actualizar'; button.disabled = false; }
     }
   }
 
@@ -458,6 +502,7 @@
     const folder = document.getElementById('ads-folder-link');
     if (folder && /^[A-Za-z0-9_-]{10,}$/.test(state.data.folderId || '')) folder.href = `https://drive.google.com/drive/folders/${state.data.folderId}`;
     renderWarnings();
+    renderStatus();
     renderKpis();
     applyChartCollapsed();
     renderChart();
@@ -490,7 +535,13 @@
       state.group = input.value;
       renderCampaigns(monthData(state.month));
     });
-    document.getElementById('ads-sync-btn')?.addEventListener('click', syncFromDrive);
+    // "Actualizar" abre el detalle para que se vea el avance (sin que el clic lo vuelva a cerrar).
+    document.getElementById('ads-sync-btn')?.addEventListener('click', event => {
+      event.stopPropagation();
+      const card = document.getElementById('data-status-card');
+      if (card) { card.hidden = false; document.getElementById('data-status-btn')?.setAttribute('aria-expanded', 'true'); }
+      syncFromDrive();
+    });
     document.getElementById('campaigns-body').addEventListener('click', event => {
       const button = event.target.closest('.ads-expand');
       if (!button) return;
@@ -511,8 +562,9 @@
       if (!withData.length) throw new Error('Sin meses con datos');
       state.month = withData[withData.length - 1].name;
       wireEvents();
+      wireStatusCard();
       renderAll();
-      setSyncStatus(`${syncLabel(state.data)} | ${SYNC_SCHEDULE}`);
+      setSyncStatus('');
     } catch (error) {
       document.getElementById('view-obj').innerHTML = '<div class="data-notice error"><strong>No se pudo cargar la informacion de The Little Market.</strong></div>';
       console.error(error);

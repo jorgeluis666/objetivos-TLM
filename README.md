@@ -72,7 +72,8 @@ Todo corre en GitHub, sin credenciales de Google. `.github/workflows/sync-ads-da
 Corre de dos formas:
 
 - **Automatica:** 7:00 a. m., 12:00 m. y 5:00 p. m. (hora de Lima). Solo publica si cambiaron los datos.
-- **A pedido:** boton "Sincronizar con Drive" en Gasto publicitario. Llama al Web App de Apps Script
+- **A pedido:** boton "Actualizar" de la barra superior (como en Terminal Pesquero; la pildora de estado a su
+  lado abre el detalle: datos, ultima y proxima sincronizacion, hoja del mes, fuente y avisos). Llama al Web App de Apps Script
   `scripts/sync-trigger.gs`, que lanza el workflow con un token guardado en Apps Script (el cliente no
   entra a GitHub), y el tablero se actualiza solo cuando llega el nuevo JSON (2 a 4 minutos). Como mucho
   una corrida cada 4 minutos. Mientras `SYNC_TRIGGER_ENDPOINT` (`js/objectives.js`) este vacio, el boton
