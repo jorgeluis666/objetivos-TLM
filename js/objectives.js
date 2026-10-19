@@ -20,9 +20,12 @@
   };
   const CHART_COLLAPSED_KEY = 'tlm-chart-collapsed-v1';
   const CHART_METRIC_KEY = 'tlm-ads-chart-metric-v1';
-  // Pagina del workflow que sincroniza con Drive. El tablero no lleva credenciales: el boton abre esta
-  // pagina (pide iniciar sesion en GitHub con acceso al repositorio) para pulsar "Run workflow".
-  const SYNC_WORKFLOW_URL = 'https://github.com/jorgeluis666/objetivos-TLM/actions/workflows/sync-ads-data.yml';
+  // Web App de Apps Script (scripts/sync-trigger.gs) que lanza el workflow sync-ads-data.yml con un token
+  // guardado en Apps Script: el tablero no lleva credenciales ni abre GitHub. Vacio mientras no se publique;
+  // entonces el boton solo vuelve a leer los datos publicados por la sincronizacion automatica.
+  const SYNC_TRIGGER_ENDPOINT = '';
+  const SYNC_TRIGGER_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/exec$/;
+  const SYNC_SCHEDULE = 'automatica 7:00 a. m., 12:00 m. y 5:00 p. m.';
   const SYNC_POLL_MS = 15000;
   const SYNC_TIMEOUT_MS = 10 * 60 * 1000;
   const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), syncing: false };
@@ -372,8 +375,9 @@
 
   // ── Sincronizacion con Drive ───────────────────────────────────────────────
   // El workflow sync-ads-data.yml descarga las hojas de Drive, regenera data/tlm-ads-2026.json y lo
-  // publica (todos los dias y a pedido). El boton abre ese workflow y espera a que el sello syncedAt
-  // del JSON publicado cambie para volver a dibujar el tablero.
+  // publica (tres veces al dia y a pedido). El boton le pide al Web App que lo lance y espera a que el
+  // sello syncedAt del JSON publicado cambie para volver a dibujar el tablero.
+  function syncEndpoint() { return SYNC_TRIGGER_RE.test(SYNC_TRIGGER_ENDPOINT) ? SYNC_TRIGGER_ENDPOINT : ''; }
   function syncStamp(data) { return data?.syncedAt || data?.generatedAt || ''; }
   function syncLabel(data) {
     const stamp = syncStamp(data);
@@ -388,8 +392,15 @@
     if (status) status.textContent = text;
     if (!button) return;
     button.disabled = busy;
-    button.textContent = busy ? 'Esperando datos...' : 'Sincronizar con Drive';
-    button.title = 'Abre GitHub para lanzar la sincronizacion con la carpeta de Drive';
+    button.textContent = busy ? 'Sincronizando...' : 'Sincronizar con Drive';
+    button.title = syncEndpoint() ? 'Lee otra vez la carpeta de Drive y actualiza el tablero' : 'Vuelve a cargar los ultimos datos publicados';
+  }
+  // Pide al Web App que lance el workflow. POST sin cabeceras propias (sin preflight de CORS).
+  async function requestSync(endpoint) {
+    const response = await fetch(endpoint, { method: 'POST', body: 'action=sync', redirect: 'follow' });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+    return result;
   }
   async function fetchPublishedData() {
     const response = await fetch(`${DATA_URL}?cb=${Date.now()}`, { cache: 'no-store' });
@@ -407,9 +418,24 @@
     if (state.syncing) return;
     state.syncing = true;
     const before = syncStamp(state.data);
-    window.open(SYNC_WORKFLOW_URL, '_blank', 'noopener');
-    setSyncStatus('En GitHub pulsa "Run workflow". El tablero se actualiza solo al terminar (2 a 4 minutos).', true);
+    const endpoint = syncEndpoint();
     try {
+      // Sin Web App: solo se relee lo que publico la sincronizacion automatica.
+      if (!endpoint) {
+        setSyncStatus('Buscando datos nuevos...', true);
+        const data = await fetchPublishedData().catch(() => null);
+        if (data && syncStamp(data) !== before) applyData(data);
+        setSyncStatus(data ? `${syncLabel(data)} | ${SYNC_SCHEDULE}` : 'No se pudieron leer los datos. Intenta en unos minutos.');
+        return;
+      }
+      setSyncStatus('Leyendo la carpeta de Drive. El tablero se actualiza solo al terminar (2 a 4 minutos).', true);
+      try {
+        const result = await requestSync(endpoint);
+        if (result.pending) setSyncStatus('Ya hay una sincronizacion en curso. El tablero se actualiza solo al terminar.', true);
+      } catch (error) {
+        setSyncStatus(`No se pudo iniciar la sincronizacion (${error.message}). ${syncLabel(state.data)}`);
+        return;
+      }
       const started = Date.now();
       while (Date.now() - started < SYNC_TIMEOUT_MS) {
         await new Promise(resolve => setTimeout(resolve, SYNC_POLL_MS));
@@ -420,7 +446,7 @@
           return;
         }
       }
-      setSyncStatus('Aun no llegan datos nuevos. Si ya corriste el workflow, recarga la pagina en unos minutos.');
+      setSyncStatus('Aun no llegan datos nuevos. Recarga la pagina en unos minutos.');
     } finally {
       state.syncing = false;
       const button = document.getElementById('ads-sync-btn');
@@ -486,7 +512,7 @@
       state.month = withData[withData.length - 1].name;
       wireEvents();
       renderAll();
-      setSyncStatus(`${syncLabel(state.data)} | automatica todos los dias 7:00 a. m.`);
+      setSyncStatus(`${syncLabel(state.data)} | ${SYNC_SCHEDULE}`);
     } catch (error) {
       document.getElementById('view-obj').innerHTML = '<div class="data-notice error"><strong>No se pudo cargar la informacion de The Little Market.</strong></div>';
       console.error(error);

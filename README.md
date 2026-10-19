@@ -71,10 +71,25 @@ Todo corre en GitHub, sin credenciales de Google. `.github/workflows/sync-ads-da
 
 Corre de dos formas:
 
-- **Automatica:** todos los dias a las 7:00 a. m. (hora de Lima).
-- **A pedido:** boton "Sincronizar con Drive" en Gasto publicitario. Abre el workflow en GitHub para
-  pulsar "Run workflow" (requiere sesion en GitHub con acceso al repositorio) y el tablero se
-  actualiza solo cuando llega el nuevo JSON (2 a 4 minutos).
+- **Automatica:** 7:00 a. m., 12:00 m. y 5:00 p. m. (hora de Lima). Solo publica si cambiaron los datos.
+- **A pedido:** boton "Sincronizar con Drive" en Gasto publicitario. Llama al Web App de Apps Script
+  `scripts/sync-trigger.gs`, que lanza el workflow con un token guardado en Apps Script (el cliente no
+  entra a GitHub), y el tablero se actualiza solo cuando llega el nuevo JSON (2 a 4 minutos). Como mucho
+  una corrida cada 4 minutos. Mientras `SYNC_TRIGGER_ENDPOINT` (`js/objectives.js`) este vacio, el boton
+  solo vuelve a leer los datos publicados.
+
+Puesta en marcha del Web App (una vez):
+
+1. GitHub > Settings > Developer settings > Fine-grained tokens: token solo para `objetivos-TLM`, permiso
+   **Actions: Read and write**. Anotar su vencimiento: al vencer, el boton deja de lanzar la sincronizacion.
+2. script.google.com > Nuevo proyecto "Sincronizar TLM": pegar `scripts/sync-trigger.gs`.
+3. Configuracion del proyecto > Propiedades del script: `GITHUB_TOKEN` = el token.
+4. Implementar > Nueva implementacion > Aplicacion web: ejecutar como "Yo", acceso "Cualquier usuario".
+5. Pegar la URL `/exec` en `SYNC_TRIGGER_ENDPOINT` y publicar.
+
+Si la hoja de un mes no se puede leer (por ejemplo, Meta cambia el nombre de una columna), ese mes queda
+sin datos con un aviso en el tablero y el resto se sigue actualizando. En octubre de 2026 Meta renombro
+"Importe gastado (PEN)" a "Monto gastado (PEN)": se aceptan los dos.
 
 | Carpeta | ID de Drive |
 | --- | --- |

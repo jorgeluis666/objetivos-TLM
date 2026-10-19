@@ -1,12 +1,12 @@
 name: Sincronizar datos de Meta Ads desde Drive
 
 # Descarga las hojas mensuales de Meta Ads de Drive, regenera data/tlm-ads-2026.json y lo publica en
-# main (GitHub Pages lo sirve al cliente). Corre solo todos los dias y a pedido con "Run workflow"
-# (el boton "Sincronizar con Drive" del tablero abre esa pagina).
+# main (GitHub Pages lo sirve al cliente). Corre solo tres veces al dia y a pedido: el boton
+# "Sincronizar con Drive" del tablero lo lanza por el Web App scripts/sync-trigger.gs.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * *' # 7:00 a. m. hora de Lima
+    - cron: '0 12,17,22 * * *' # 7:00 a. m., 12:00 m. y 5:00 p. m. hora de Lima
 
 permissions:
   contents: write
@@ -39,8 +39,12 @@ jobs:
         run: |
           git config user.name "tlm-sync[bot]"
           git config user.email "tlm-sync@users.noreply.github.com"
-          # syncedAt cambia en cada corrida y es lo que el tablero espera para saber que termino,
-          # asi que se publica siempre, aunque los demas datos no hayan cambiado.
+          # syncedAt cambia en cada corrida y es lo que el boton del tablero espera para saber que termino:
+          # a pedido se publica siempre. Las corridas automaticas solo publican si cambio algo mas.
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && git diff --quiet -I '"(syncedAt|generatedAt)"' -- data/tlm-ads-2026.json; then
+            echo "Sin cambios en los datos."
+            exit 0
+          fi
           git add data/tlm-ads-2026.json
           git commit -m "data: sincronizacion desde Drive ($(date -u +%Y-%m-%dT%H:%MZ))" || exit 0
           git push

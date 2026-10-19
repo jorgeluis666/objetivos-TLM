@@ -127,12 +127,13 @@ def read_rows(path):
     rows = sheet.iter_rows(values_only=True)
     keys, currency = [], None
     for cell in next(rows, None) or []:
-        spend = re.match(r'importe gastado \((\w+)\)', norm(cell))
+        # Meta renombro "Importe gastado (PEN)" a "Monto gastado (PEN)" en octubre de 2026: valen las dos.
+        spend = re.match(r'(?:importe|monto) gastado \((\w+)\)', norm(cell))
         if spend:
             currency = spend.group(1).upper()
         keys.append('spend' if spend else COLUMNS.get(norm(cell)))
     if 'spend' not in keys or 'campaign' not in keys or 'day' not in keys:
-        raise ValueError(f'{path}: no tiene las columnas de la exportacion de Meta (Dia, Importe gastado, Nombre de la campana)')
+        raise ValueError(f'{path}: no tiene las columnas de la exportacion de Meta (Dia, Importe o Monto gastado, Nombre de la campana)')
     if currency != CURRENCY:
         raise ValueError(f'{path}: moneda inesperada {currency} (se espera {CURRENCY})')
     records = []
@@ -218,7 +219,14 @@ def build(drive):
             continue
         file_name = os.path.basename(path)
         entry['sheet'] = {'title': os.path.splitext(file_name)[0], 'id': ids.get(file_name)}
-        rows = read_rows(path)
+        # Una hoja mal formada no detiene la sincronizacion: el mes queda sin datos y el tablero lo avisa.
+        try:
+            rows = read_rows(path)
+        except ValueError as error:
+            warnings_list.append(f'{month}: la hoja "{entry["sheet"]["title"]}" no se pudo leer '
+                                 f'({str(error).split(": ", 1)[-1]}).')
+            entry['notice'] = 'La hoja no se pudo leer'
+            continue
         inside = [row for row in rows if row['day'].year == YEAR and row['day'].month == index + 1]
         if rows and not inside:
             days = sorted(row['day'] for row in rows)
