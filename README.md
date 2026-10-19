@@ -98,6 +98,29 @@ sin datos con un aviso en el tablero y el resto se sigue actualizando. En octubr
 La carpeta debe estar compartida como **"Cualquier persona con el enlace" > Lector**. Si el workflow falla
 en "Descargar la carpeta de Drive", la carpeta o alguna hoja sigue restringida.
 
+## Archivo de Reportes
+
+Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
+
+- **Documentos:** los archivos de la carpeta de reportes de Drive
+  (`17U5xr16eq1aLobF7LEHeb67KLg_D8aZe`, compartida por enlace), con tipo, periodo, version vigente,
+  vista previa, enlace a Drive y descarga. El workflow la lista en cada sincronizacion
+  (`scripts/drive-download.py` + `scripts/update-reports-catalog.py` -> `data/tlm-drive-reports.json`). La fecha es
+  la de "Ultima modificacion" de la vista publica de Drive.
+- **Generar reporte semanal:** el reporte de Meta Ads de una semana cerrada de lunes a domingo (las ultimas 12),
+  frente a la semana anterior, con las laminas del ultimo reporte subido a la carpeta: portada, resumen
+  ejecutivo, distribucion de la inversion, Ventas (con embudo), Mensajes (con segmentacion por edad y sexo),
+  Reconocimiento, conclusiones y cierre.
+  - Datos: `data/tlm-ads-daily.json`, que `build-ads-data.py` escribe con las filas por dia, campana y anuncio de
+    las ultimas 15 semanas, y aparte la segmentacion por dia, grupo, edad y sexo.
+  - Los textos de analisis y conclusiones vienen propuestos con los numeros; se editan en pantalla y quedan
+    guardados por semana en el navegador (`tlm-week-notes-v1`). "Restaurar textos" vuelve a los propuestos.
+  - "Descargar PDF" abre la impresion del navegador (A4 horizontal, una lamina por pagina) con el nombre
+    `The-Little-Market-Reporte-Ads-Semanal-<dias>-<Mes>-<Ano>`. Al subir ese PDF a la carpeta, Documentos lo
+    reconoce como reporte semanal.
+  - Si la descarga de Meta no llega al domingo, avisa que faltan dias.
+  - El alcance es la suma de las filas diarias, no el alcance sin duplicar de Meta.
+
 ## Proyecciones
 
 El modulo Proyecciones lee los datos del modulo Gasto publicitario a traves de

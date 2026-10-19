@@ -36,6 +36,13 @@
       source: 'Fuente: Meta Ads / Histórico consolidado',
       footer: 'Solo meses cerrados',
     },
+    'view-reports': {
+      title: 'Archivo de Reportes',
+      caption: 'Reportes en Drive y generador semanal',
+      status: () => `Datos al ${cutoffLabel()}`,
+      source: 'Fuente: carpeta de reportes en Google Drive / Meta Ads por dia',
+      footer: 'Sincronizado por Agencia Lima Retail',
+    },
     'view-log': {
       title: 'Bitácora',
       caption: 'Checklist de cambios, comentarios y decisiones',
@@ -87,11 +94,48 @@
     if (viewId === 'view-obj') window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
     if (viewId === 'view-history') window.TLMObjectives?.renderHistory?.();
     if (viewId === 'view-log') window.TLMBitacora?.init();
+    if (viewId === 'view-reports') showReportsTab(storedReportsTab());
+  }
+
+  // Archivo de Reportes: pestanas Documentos y Generar reporte semanal.
+  const REPORTS_TAB_KEY = 'tlm-reports-tab';
+  function storedReportsTab() {
+    try {
+      return window.localStorage.getItem(REPORTS_TAB_KEY) === 'week' ? 'week' : 'docs';
+    } catch {
+      return 'docs';
+    }
+  }
+  function showReportsTab(tab) {
+    document.querySelectorAll('[data-reports-tab]').forEach(button => {
+      const active = button.dataset.reportsTab === tab;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+      document.getElementById(button.getAttribute('aria-controls')).hidden = !active;
+    });
+    try {
+      window.localStorage.setItem(REPORTS_TAB_KEY, tab);
+    } catch {
+      // Sin localStorage la pestana vuelve a Documentos al recargar.
+    }
+    window.ReportsArchive?.init();
+    if (tab === 'week') window.TLMReportWeek?.init();
   }
 
   function initNavigation() {
     document.querySelectorAll('[data-view-target]').forEach(button => {
       button.addEventListener('click', () => showView(button.dataset.viewTarget));
+    });
+    const tabs = [...document.querySelectorAll('[data-reports-tab]')];
+    tabs.forEach((button, index) => {
+      button.addEventListener('click', () => showReportsTab(button.dataset.reportsTab));
+      button.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+        showReportsTab(next.dataset.reportsTab);
+        next.focus();
+      });
     });
     showView(storedView());
     // Los datos llegan despues de la navegacion (y cambian al sincronizar): refresca la fecha de corte.

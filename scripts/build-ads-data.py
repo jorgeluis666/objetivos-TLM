@@ -36,6 +36,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DRIVE = 'G:/Mi unidad/Agencia Lima Retail/01_Clientes y Ventas/02_Clientes de la agencia/The Little Market'
 META_DIR = 'Meta files - The Little Market'
 OUT = os.path.join(ROOT, 'data', 'tlm-ads-2026.json')
+# Filas por dia para el Generador de reporte semanal (Archivo de Reportes): las ultimas semanas, no todo el ano.
+DAILY_OUT = os.path.join(ROOT, 'data', 'tlm-ads-daily.json')
+DAILY_WEEKS = 15
+DAILY_FIELDS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
+                'conversations', 'thruplays', 'profileVisits']
+SEGMENT_FIELDS = ['spend', 'purchases', 'revenue', 'conversations', 'thruplays']
 YEAR = 2026
 MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 CURRENCY = 'PEN'
@@ -48,7 +54,7 @@ COLUMNS = {
     'interacciones': 'interactions', 'articulos agregados al carrito': 'addToCart', 'pagos iniciados': 'checkouts',
     'compras': 'purchases', 'valor de conversion de compras': 'revenue',
     'conversaciones con mensajes iniciadas': 'conversations', 'tipo de resultado': 'resultType', 'resultados': 'results',
-    'enlace de vista previa': 'preview', 'nombre de la campana': 'campaign',
+    'enlace de vista previa': 'preview', 'nombre de la campana': 'campaign', 'edad': 'age', 'sexo': 'sex',
 }
 SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
           'conversations', 'interactions']
@@ -204,12 +210,59 @@ def short(day):
     return f'{day.day}/{day.month:02d}'
 
 
+def compact(values, keys):
+    return [round(values[key], 2) if key in MONEY else int(round(values[key])) for key in keys]
+
+
+def daily_table(rows, cutoff):
+    """Filas por dia / campana / anuncio (sumando edad, sexo y conjunto) y, aparte, por dia / grupo / edad / sexo
+    para la segmentacion. Se guardan con indices para que el archivo pese poco."""
+    if not rows or not cutoff:
+        return None
+    last = date.fromisoformat(cutoff)
+    first = date.fromordinal(last.toordinal() - last.weekday() - 7 * (DAILY_WEEKS - 1))
+    campaigns, ads, by_ad, by_segment = {}, {}, {}, {}
+    groups = {}
+    for row in rows:
+        if row['day'] < first or row['day'] > last:
+            continue
+        name = row['campaign']
+        if name not in groups:
+            groups[name] = group_of(name, row.get('objective'))
+        campaign = campaigns.setdefault(name, len(campaigns))
+        ad_name = str(row.get('ad') or '').strip() or '(sin nombre)'
+        ad = ads.setdefault(ad_name, {'index': len(ads), 'url': None})
+        url = row.get('preview')
+        if not ad['url'] and isinstance(url, str) and url.startswith('https://'):
+            ad['url'] = url
+        offset = (row['day'] - first).days
+        add(by_ad.setdefault((offset, campaign, ad['index']), zero()), row)
+        segment = (offset, groups[name], str(row.get('age') or '').strip() or '?', norm(row.get('sex')) or '?')
+        add(by_segment.setdefault(segment, zero()), row)
+    labels = {part: sorted({key[index] for key in by_segment}) for index, part in ((1, 'groups'), (2, 'ages'), (3, 'sexes'))}
+    return {
+        'firstDay': first.isoformat(),
+        'lastDay': cutoff,
+        'campaigns': [{'name': name, 'group': groups[name]} for name in campaigns],
+        'ads': [{'name': name, 'url': info['url']} for name, info in ads.items()],
+        'columns': ['d', 'campaign', 'ad'] + DAILY_FIELDS,
+        'rows': [list(key) + compact(values, DAILY_FIELDS) for key, values in sorted(by_ad.items())],
+        # Segmentacion por edad y sexo: grupo, edad y sexo van como indices de sus listas.
+        'segments': {
+            **labels,
+            'columns': ['d', 'group', 'age', 'sex'] + SEGMENT_FIELDS,
+            'rows': [[key[0], labels['groups'].index(key[1]), labels['ages'].index(key[2]), labels['sexes'].index(key[3])]
+                     + compact(values, SEGMENT_FIELDS) for key, values in sorted(by_segment.items()) if values['spend'] > 0],
+        },
+    }
+
+
 def build(drive):
     folder = os.path.join(drive, META_DIR)
     if not os.path.isdir(folder):
         sys.exit(f'No existe la carpeta {folder}')
     folder_id, ids = sheet_ids(drive)
-    months, warnings_list = [], []
+    months, warnings_list, all_rows = [], [], []
     for index, month in enumerate(MONTHS):
         path = month_file(folder, month)
         entry = {'name': month, 'status': 'sin-datos', 'period': None, 'sheet': None, 'firstDay': None, 'lastDay': None,
@@ -234,6 +287,7 @@ def build(drive):
                                  f'(sus fechas van del {short(days[0])} al {short(days[-1])}). Revisa que no sea una copia de otro mes.')
             entry['notice'] = 'La hoja no trae dias de este mes'
             continue
+        all_rows.extend(inside)
         campaigns = campaigns_of(inside)
         if not campaigns:
             continue
@@ -264,7 +318,7 @@ def build(drive):
         if not month['sheet']:
             warnings_list.append(f'{month["name"]}: no hay hoja del mes en la carpeta de Drive.')
             month['notice'] = 'Sin hoja en la carpeta de Drive'
-    return {
+    return all_rows, {
         'account': 'The Little Market',
         'year': YEAR,
         'cutoff': cutoff,
@@ -285,10 +339,24 @@ def main():
     args = parser.parse_args()
     if not os.path.isdir(args.root):
         sys.exit(f'No existe la carpeta {args.root}')
-    data = build(args.root)
+    rows, data = build(args.root)
     with open(OUT, 'w', encoding='utf-8', newline='\n') as handle:
         json.dump(data, handle, ensure_ascii=False, indent=1)
         handle.write('\n')
+    daily = daily_table(rows, data['cutoff'])
+    if daily:
+        daily['syncedAt'] = data['syncedAt']
+        with open(DAILY_OUT, 'w', encoding='utf-8', newline='\n') as handle:
+            # Una fila por linea y sin espacios: legible en los diffs sin inflar el archivo.
+            line = lambda value: json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+            segments = daily['segments']
+            head = ',\n'.join(f' "{key}": {line(value)}' for key, value in daily.items() if key not in ('rows', 'segments'))
+            seg_head = ',\n'.join(f'  "{key}": {line(value)}' for key, value in segments.items() if key != 'rows')
+            handle.write('{\n' + head + ',\n "rows": [\n' + ',\n'.join(line(row) for row in daily['rows']) + '\n ],\n'
+                         ' "segments": {\n' + seg_head + ',\n  "rows": [\n' + ',\n'.join(line(row) for row in segments['rows'])
+                         + '\n  ]\n }\n}\n')
+        print(f'[diario] escrito {os.path.relpath(DAILY_OUT, ROOT)} ({daily["firstDay"]} a {daily["lastDay"]}, '
+              f'{len(daily["rows"])} filas, {len(daily["segments"]["rows"])} de segmentacion)')
     for month in data['months']:
         if not month['kpis']:
             continue

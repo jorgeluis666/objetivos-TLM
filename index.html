@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/dashboard.css?v=1.0.0">
+<link rel="stylesheet" href="css/dashboard.css?v=1.2.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.1.3</span></div></div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.2.0</span></div></div>
     <div class="s-group-lbl">Modulos activos</div>
     <button title="Gasto publicitario" class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
@@ -27,6 +27,10 @@
     <button title="Histórico de Campañas" class="s-item" type="button" data-view-target="view-history">
       <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M3 4h18"/><path d="M3 10h18"/><path d="M3 16h18"/><path d="M7 4v16"/><path d="M17 4v16"/></svg></div>
       <div class="s-text"><div class="s-title-nav">Histórico de Campañas</div><div class="s-desc-nav">Campañas de meses cerrados</div></div>
+    </button>
+    <button title="Archivo de Reportes" class="s-item" type="button" data-view-target="view-reports">
+      <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="16" x2="13" y2="16"/></svg></div>
+      <div class="s-text"><div class="s-title-nav">Archivo de Reportes</div><div class="s-desc-nav">Reportes en Drive y generador semanal</div></div>
     </button>
     <button title="Bitácora" class="s-item" type="button" data-view-target="view-log">
       <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v18H7a2 2 0 0 0-2 2z"/><path d="M5 22V4"/><line x1="9" y1="7" x2="14" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/></svg></div>
@@ -130,6 +134,72 @@
         </div>
       </section>
 
+      <section class="view" id="view-reports">
+        <h1 class="section-title">Archivo de Reportes</h1>
+        <p class="section-desc">Los reportes de The Little Market guardados en la carpeta compartida de Google Drive, y el generador del reporte semanal de Meta Ads de lunes a domingo, con el formato del ultimo reporte subido.</p>
+        <div class="reports-tabs" role="tablist" aria-label="Archivo de Reportes">
+          <button type="button" class="reports-tab active" role="tab" id="reports-tab-docs" aria-selected="true" aria-controls="reports-pane-docs" data-reports-tab="docs">Documentos</button>
+          <button type="button" class="reports-tab" role="tab" id="reports-tab-week" aria-selected="false" aria-controls="reports-pane-week" data-reports-tab="week" tabindex="-1">Generar reporte semanal</button>
+        </div>
+        <div class="reports-pane" id="reports-pane-docs" role="tabpanel" aria-labelledby="reports-tab-docs">
+          <div class="kpi-strip reports-kpis" id="reports-kpis" aria-label="KPIs del archivo de reportes"></div>
+          <div class="panel reports-panel">
+            <div class="panel-head reports-panel-head">
+              <div>
+                <div class="panel-title">Documentos de la carpeta</div>
+                <div class="panel-sub" id="reports-count">Cargando documentos...</div>
+              </div>
+              <a class="refresh-sheet-btn" id="reports-folder-link" href="https://drive.google.com/drive/folders/17U5xr16eq1aLobF7LEHeb67KLg_D8aZe" target="_blank" rel="noopener">Abrir carpeta en Drive</a>
+            </div>
+            <div class="reports-filters">
+              <label class="reports-field search" for="reports-search">
+                <span class="sr-only">Buscar documento</span>
+                <input id="reports-search" type="search" placeholder="Buscar por nombre, tipo o periodo">
+              </label>
+              <label class="reports-field" for="reports-type">
+                <span class="sr-only">Filtrar por tipo</span>
+                <select id="reports-type"><option value="all">Todos los tipos</option></select>
+              </label>
+              <label class="reports-field" for="reports-period">
+                <span class="sr-only">Filtrar por periodo</span>
+                <select id="reports-period"><option value="all">Todos los periodos</option></select>
+              </label>
+              <label class="reports-field" for="reports-sort">
+                <span class="sr-only">Ordenar</span>
+                <select id="reports-sort">
+                  <option value="recent">Mas recientes</option>
+                  <option value="oldest">Mas antiguos</option>
+                  <option value="name">Nombre (A-Z)</option>
+                  <option value="size">Peso del archivo</option>
+                </select>
+              </label>
+              <label class="reports-check" for="reports-latest-only">
+                <input id="reports-latest-only" type="checkbox">
+                Solo versiones vigentes
+              </label>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table reports-table">
+                <thead><tr><th>Documento</th><th>Tipo</th><th>Periodo</th><th>Formato</th><th class="num">Peso</th><th>Actualizado</th><th>Acciones</th></tr></thead>
+                <tbody id="reports-body"><tr><td class="table-empty" colspan="7">Cargando documentos...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="reports-pane" id="reports-pane-week" role="tabpanel" aria-labelledby="reports-tab-week" hidden>
+          <div class="panel week-toolbar">
+            <label class="reports-field" for="week-select"><span class="week-toolbar-label">Semana (lunes a domingo)</span><select id="week-select"><option value="">Cargando semanas...</option></select></label>
+            <div class="week-model" id="week-model"></div>
+            <div class="week-toolbar-actions">
+              <button type="button" class="report-btn" id="week-reset">Restaurar textos</button>
+              <button type="button" class="refresh-sheet-btn" id="week-print">Descargar PDF</button>
+            </div>
+            <p class="week-toolbar-note">Los textos de analisis y conclusiones vienen propuestos con los numeros de la semana: editalos aqui antes de descargar. Se guardan en este navegador. Al descargar, elige "Guardar como PDF".</p>
+          </div>
+          <div id="week-report"></div>
+        </div>
+      </section>
+
       <section class="view" id="view-log">
         <h1 class="section-title">Bitácora</h1>
         <p class="section-desc">Checklist mensual de cambios, comentarios y decisiones. Agrega o edita ítems aquí mismo: se guardan como borrador en este navegador hasta exportar el archivo para publicarlo.</p>
@@ -164,10 +234,29 @@
     </div>
   </main>
 </div>
-<script src="js/objectives.js?v=1.1.3"></script>
+<div class="reports-modal" id="reports-modal" role="dialog" aria-modal="true" aria-labelledby="reports-modal-title" aria-hidden="true">
+  <div class="reports-modal-card">
+    <div class="reports-modal-head">
+      <div>
+        <div class="reports-modal-title" id="reports-modal-title"></div>
+        <div class="reports-modal-sub" id="reports-modal-sub"></div>
+      </div>
+      <div class="reports-modal-actions">
+        <a class="report-btn" id="reports-modal-link" href="#" target="_blank" rel="noopener">Abrir en Drive</a>
+        <a class="report-btn" id="reports-modal-download" href="#" target="_blank" rel="noopener">Descargar</a>
+        <button class="report-btn close" type="button" data-close-preview aria-label="Cerrar vista previa">&times;</button>
+      </div>
+    </div>
+    <div class="reports-modal-body"><iframe id="reports-modal-frame" title="Vista previa del documento" src="about:blank"></iframe></div>
+    <div class="reports-modal-foot">La vista previa usa el visor de Google Drive. Si no carga, abre el documento en Drive.</div>
+  </div>
+</div>
+<script src="js/objectives.js?v=1.2.0"></script>
 <script src="js/projections.js?v=1.0.0"></script>
 <script src="js/bitacora.js?v=1.0.0"></script>
-<script src="js/navigation.js?v=1.0.0"></script>
+<script src="js/reports-archive.js?v=1.2.0"></script>
+<script src="js/report-week.js?v=1.2.0"></script>
+<script src="js/navigation.js?v=1.2.0"></script>
 <script src="js/sidebar.js?v=1.0.0"></script>
 <script src="auth-login.js?v=1.1.2"></script>
 <script>

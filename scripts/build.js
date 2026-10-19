@@ -46,55 +46,28 @@ function copyBrandAssets() {
 function main() {
   let html = readFile('index.html');
   const css = readFile('css/dashboard.css').replace(/url\('\.\.\/assets\//g, "url('assets/");
-  const app = readFile('js/objectives.js');
-  const navigation = readFile('js/navigation.js');
-  const sidebar = readFile('js/sidebar.js');
-  const projections = readFile('js/projections.js');
-  const bitacora = readFile('js/bitacora.js');
   const data = readFile('data/tlm-ads-2026.json').replace(/</g, '\\u003c');
   const bitacoraData = readFile('data/tlm-bitacora-2026.json').replace(/</g, '\\u003c');
+  const reportsData = readFile('data/tlm-drive-reports.json').replace(/</g, '\\u003c');
 
+  // Las funciones de reemplazo evitan que un "$" del codigo se lea como patron de String.replace.
   html = html.replace(
     new RegExp('<link rel=\"stylesheet\" href=\"css/dashboard\\.css(?:\\?v=[^\"]+)?\">'),
-    `<style>${css}</style>`
+    () => `<style>${css}</style>`
   );
-  html = html.replace(
-    new RegExp('<script src=\"js/objectives\\.js(?:\\?v=[^\"]+)?\"><\\/script>'),
-    `<script>${app}</script>`
-  );
-  html = html.replace(
-    new RegExp('<script src="js\\/navigation\\.js(?:\\?v=[^"]+)?"><\\/script>'),
-    `<script>${navigation}</script>`
-  );
-  html = html.replace(
-    new RegExp('<script src="js\\/sidebar\\.js(?:\\?v=[^"]+)?"><\\/script>'),
-    `<script>${sidebar}</script>`
-  );
-  html = html.replace(
-    new RegExp('<script src="js\\/projections\\.js(?:\\?v=[^"]+)?"><\\/script>'),
-    `<script>${projections}</script>`
-  );
-  html = html.replace(
-    new RegExp('<script src="js\\/bitacora\\.js(?:\\?v=[^"]+)?"><\\/script>'),
-    `<script>${bitacora}</script>`
-  );
+  // Todos los scripts locales de js/ quedan incrustados (data/tlm-ads-daily.json se sigue leyendo aparte).
+  html = html.replace(/<script src="js\/([\w-]+)\.js(?:\?v=[^"]+)?"><\/script>/g, (_, name) => `<script>${readFile(`js/${name}.js`)}</script>`);
   html = html.replace(
     '</head>',
-    `<script>window.TLM_ADS_DATA = ${data};window.TLM_BITACORA = ${bitacoraData};</script></head>`
+    () => `<script>window.TLM_ADS_DATA = ${data};window.TLM_BITACORA = ${bitacoraData};window.TLM_DRIVE_REPORTS = ${reportsData};</script></head>`
   );
 
   fs.rmSync(DIST_DIR, { recursive: true, force: true });
   fs.mkdirSync(path.join(DIST_DIR, 'data'), { recursive: true });
   fs.writeFileSync(DIST_HTML, html, 'utf8');
-  fs.copyFileSync(
-    path.join(ROOT, 'data', 'tlm-ads-2026.json'),
-    path.join(DIST_DIR, 'data', 'tlm-ads-2026.json')
-  );
-
-  fs.copyFileSync(
-    path.join(ROOT, 'data', 'tlm-bitacora-2026.json'),
-    path.join(DIST_DIR, 'data', 'tlm-bitacora-2026.json')
-  );
+  for (const file of ['tlm-ads-2026.json', 'tlm-ads-daily.json', 'tlm-bitacora-2026.json', 'tlm-drive-reports.json']) {
+    fs.copyFileSync(path.join(ROOT, 'data', file), path.join(DIST_DIR, 'data', file));
+  }
 
   copyLoginAssets();
   copyBrandAssets();
