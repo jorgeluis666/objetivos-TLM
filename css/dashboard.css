@@ -325,11 +325,10 @@
 
 .s-modulo-activo {
   margin-top: auto;
-  padding: 15px 16px;
-  border: 1px solid #b9d6ff;
-  border-radius: 10px;
-  color: #0f172a;
-  background: #eff6ff;
+  padding: 16px 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
 .s-ma-label {
@@ -1164,4 +1163,48 @@ textarea.log-text {
 @media(max-width:760px) {
   .funnel-step { grid-template-columns: 110px minmax(0, 1fr) 60px; }
   .funnel-step small { grid-column: 1 / -1; margin-top: -6px; }
+}
+
+/* ===== Pie del panel: cuenta, WhatsApp de Lima Retail y web ===== */
+
+.s-wa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  margin-top: 12px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: #25d366;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.s-wa:hover {
+  background: #1da851;
+}
+
+.s-wa svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: currentColor;
+}
+
+.s-web {
+  display: block;
+  margin-top: 9px;
+  color: inherit;
+  font-size: 10px;
+  text-align: center;
+  text-decoration: none;
+  opacity: .7;
+}
+
+.s-web:hover {
+  opacity: 1;
+  text-decoration: underline;
 }

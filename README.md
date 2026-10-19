@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.0.0`.
+Version actual: `v1.1.0`.
 
 ## Versionado
 

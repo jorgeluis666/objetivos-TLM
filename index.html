@@ -14,7 +14,7 @@
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.0.1</span></div></div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.1.0</span></div></div>
     <div class="s-group-lbl">Modulos activos</div>
     <button class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
@@ -32,8 +32,13 @@
       <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v18H7a2 2 0 0 0-2 2z"/><path d="M5 22V4"/><line x1="9" y1="7" x2="14" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/></svg></div>
       <div class="s-text"><div class="s-title-nav">Bitácora</div><div class="s-desc-nav">Cambios, comentarios y decisiones</div></div>
     </button>
-    <div class="s-modulo-activo"><div class="s-ma-label">CUENTA</div><div class="s-ma-name">The Little Market</div><div class="s-ma-desc">Control de pauta digital</div></div>
-  </aside>
+    <div class="s-modulo-activo">
+      <div class="s-ma-label">CUENTA</div>
+      <div class="s-ma-name">The Little Market</div>
+      <a class="s-wa" href="https://wa.me/51937409733" target="_blank" rel="noopener" title="Escríbenos por WhatsApp a Agencia Lima Retail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2.01a9.9 9.9 0 0 0-8.56 14.85L2.05 22l5.3-1.39a9.9 9.9 0 1 0 4.69-18.6m0 1.8a8.1 8.1 0 1 1-4.1 15.08l-.3-.18-3.14.82.84-3.06-.2-.32A8.1 8.1 0 0 1 12.04 3.8m-3.3 4.3c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.98.42 1.74.68 2.34.87.98.31 1.88.27 2.58.16.79-.12 1.43-.59 1.63-1.15.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28-.24-.12-1.43-.71-1.65-.79-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.19-.46-.39-.4-.54-.41z"/></svg>+51 937 409 733</a>
+      <a class="s-web" href="https://www.limaretail.com" target="_blank" rel="noopener">www.limaretail.com</a>
+    </div>
+</aside>
   <main class="main">
     <div class="topbar"><div class="topbar-left"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Minimizar panel" title="Minimizar panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><path class="sidebar-toggle-arrow" d="m16 9-3 3 3 3"/></svg></button><div><div class="topbar-title" id="topbar-title">Gasto publicitario 2026</div><div class="topbar-caption" id="topbar-caption">Agencia Lima Retail</div></div></div><div class="topbar-meta"><span class="topbar-pill sync ok"><span class="sync-dot"></span><span id="topbar-status">Cargando datos...</span></span></div></div>
     <div class="content">
@@ -164,7 +169,7 @@
 <script src="js/bitacora.js?v=1.0.0"></script>
 <script src="js/navigation.js?v=1.0.0"></script>
 <script src="js/sidebar.js?v=1.0.0"></script>
-<script src="auth-login.js?v=1.0.1"></script>
+<script src="auth-login.js?v=1.1.0"></script>
 <script>
   AuthLogin.init({ password: 'TLM2026', brand: 'Lima Retail', title: 'The Little\nMarket', sessionKey: 'tlm_auth' });
 </script>
