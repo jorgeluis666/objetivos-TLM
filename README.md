@@ -92,12 +92,18 @@ Si la hoja de un mes no se puede leer (por ejemplo, Meta cambia el nombre de una
 sin datos con un aviso en el tablero y el resto se sigue actualizando. En octubre de 2026 Meta renombro
 "Importe gastado (PEN)" a "Monto gastado (PEN)": se aceptan los dos.
 
+Cada descarga de Drive se intenta hasta tres veces (con 5 y 15 segundos de espera). Si un archivo sigue sin
+bajar, la sincronizacion sigue con el resto y el tablero muestra un aviso con su nombre; se vuelve a
+intentar en la corrida siguiente. Solo se detiene si no se puede leer una carpeta entera o no baja ninguna
+hoja de Meta.
+
 | Carpeta | ID de Drive |
 | --- | --- |
 | Meta files - The Little Market | `1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie` |
 
 La carpeta debe estar compartida como **"Cualquier persona con el enlace" > Lector**. Si el workflow falla
-en "Descargar la carpeta de Drive", la carpeta o alguna hoja sigue restringida.
+en "Descargar la carpeta de Drive", la carpeta sigue restringida (una sola hoja restringida no lo detiene:
+sale como aviso en el tablero).
 
 ## Archivo de Reportes
 

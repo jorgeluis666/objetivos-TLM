@@ -10,6 +10,8 @@ Se lee su vista publica (embeddedfolderview), con la fecha de "Ultima modificaci
   - Hojas de calculo de Google (carpeta de Meta) -> se exportan a .xlsx;
   - archivos .xlsx (Meta) y .pdf (Reportes) -> se descargan tal cual;
   - subcarpetas y otros documentos -> se listan en el manifest, pero no se descargan.
+Cada descarga se reintenta; si un archivo sigue sin bajar, se sigue con el resto y el manifest lo marca
+con "error" (el tablero lo muestra como aviso). Una carpeta que no se puede leer detiene todo.
 
 Uso (lo corre .github/workflows/sync-ads-data.yml):
   python scripts/drive-download.py --out drive-data
@@ -21,6 +23,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import date, datetime, timedelta, timezone
 
 import requests
@@ -42,6 +45,8 @@ ENTRY_RE = re.compile(
 MODIFIED_RE = re.compile(r'class="flip-entry-last-modified"><div>([^<]*)<')
 MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 SHEET_MIME = 'application/vnd.google-apps.spreadsheet'
+# Segundos de espera antes de cada reintento de una descarga (3 intentos en total).
+RETRY_WAITS = [5, 15]
 EXTENSIONS = {META_FOLDER: ('.xlsx',), REPORTS_FOLDER: ('.pdf',)}
 SESSION = requests.Session()
 SESSION.headers['User-Agent'] = 'Mozilla/5.0 (tlm-sync)'
@@ -80,18 +85,34 @@ def list_folder(folder_id):
 
 
 def fetch(url, target):
-    response = SESSION.get(url, timeout=120)
+    """Descarga el archivo; devuelve None si salio bien o el motivo del fallo."""
+    try:
+        response = SESSION.get(url, timeout=120)
+    except requests.RequestException as error:
+        return f'error de red: {type(error).__name__}'
     content_type = response.headers.get('content-type', '')
     # Si el archivo no es publico, Google devuelve una pagina de inicio de sesion en HTML.
     if response.status_code != 200 or content_type.startswith('text/html'):
-        return False
+        return f'HTTP {response.status_code}' + (', Drive devolvio una pagina en vez del archivo' if response.status_code == 200 else '')
     with open(target, 'wb') as handle:
         handle.write(response.content)
-    return True
+    return None
+
+
+def fetch_with_retries(url, target):
+    for attempt, wait in enumerate(RETRY_WAITS + [None], start=1):
+        error = fetch(url, target)
+        if not error or wait is None:
+            return error
+        print(f'[drive] intento {attempt} fallido ({error}); se reintenta en {wait} s', file=sys.stderr)
+        time.sleep(wait)
 
 
 def download_folder(folder_id, target_dir, extensions, sheets):
-    """Descarga lo que usan los scripts y devuelve el listado completo (con los IDs de Drive)."""
+    """Descarga lo que usan los scripts y devuelve el listado completo (con los IDs de Drive).
+
+    Un archivo que no baja tras los reintentos no detiene la sincronizacion: queda en el manifest con
+    "error" (y sin "file") y build-ads-data.py lo pasa a los avisos del tablero."""
     entries = []
     for entry in list_folder(folder_id):
         item = {'id': entry['id'], 'name': entry['name'], 'mimeType': entry['mimeType'], 'modified': entry['modified'], 'file': None}
@@ -101,8 +122,10 @@ def download_folder(folder_id, target_dir, extensions, sheets):
         elif entry['name'].lower().endswith(extensions):
             item['file'] = entry['name']
             url = FILE_URL.format(id=entry['id'])
-        if item['file'] and not fetch(url, os.path.join(target_dir, item['file'])):
-            sys.exit(f'No se pudo descargar "{entry["name"]}" ({entry["id"]}): revisa que sea publico.')
+        error = item['file'] and fetch_with_retries(url, os.path.join(target_dir, item['file']))
+        if error:
+            print(f'[drive] no se pudo descargar "{entry["name"]}" ({entry["id"]}): {error}', file=sys.stderr)
+            item.update(file=None, error=error)
         entries.append(item)
     return entries
 
@@ -117,10 +140,15 @@ def main():
         os.makedirs(target_dir, exist_ok=True)
         entries = download_folder(folder_id, target_dir, EXTENSIONS[local], sheets=local == META_FOLDER)
         downloaded = [entry['file'] for entry in entries if entry['file']]
+        failed = [entry['name'] for entry in entries if entry.get('error')]
+        # Sin ninguna hoja de Meta se publicaria un tablero vacio: eso si detiene la sincronizacion.
+        if not downloaded and failed and local == META_FOLDER:
+            sys.exit(f'No se pudo descargar ninguna hoja de la carpeta "{local}" ({folder_id}).')
         if not downloaded and local == META_FOLDER:
             sys.exit(f'La carpeta "{local}" ({folder_id}) no tiene hojas de calculo ni .xlsx.')
         manifest[local] = {'folderId': folder_id, 'files': entries}
-        print(f'[drive] {local}: {len(downloaded)} descargados de {len(entries)} -> {", ".join(downloaded)}')
+        print(f'[drive] {local}: {len(downloaded)} descargados de {len(entries)} -> {", ".join(downloaded)}'
+              + (f' | fallidos: {", ".join(failed)}' if failed else ''))
     with open(os.path.join(args.out, 'manifest.json'), 'w', encoding='utf-8') as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=1)
 

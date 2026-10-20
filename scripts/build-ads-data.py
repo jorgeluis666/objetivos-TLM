@@ -117,14 +117,17 @@ def group_of(name, objective):
 def month_file(folder, month):
     """Hoja del mes: por nombre ("Octubre.xlsx", "The Little Market - Octubre 2026.xlsx") o por el rango de
     fechas de la exportacion ("..._20261001-20261031.xlsx")."""
-    number = MONTHS.index(month) + 1
-    word = re.compile(r'(^|[^a-z])' + norm(month) + r'([^a-z]|$)')
     for path in sorted(glob.glob(os.path.join(folder, '*.xlsx'))):
-        name = norm(os.path.basename(path))
-        span = re.search(r'(\d{4})(\d{2})\d{2}\s*-\s*\d{8}', name)
-        if word.search(name) or (span and int(span.group(1)) == YEAR and int(span.group(2)) == number):
+        if is_month_name(os.path.basename(path), month):
             return path
     return None
+
+
+def is_month_name(file_name, month):
+    name = norm(file_name)
+    span = re.search(r'(\d{4})(\d{2})\d{2}\s*-\s*\d{8}', name)
+    return bool(re.search(r'(^|[^a-z])' + norm(month) + r'([^a-z]|$)', name)
+                or (span and int(span.group(1)) == YEAR and int(span.group(2)) == MONTHS.index(month) + 1))
 
 
 def read_rows(path):
@@ -206,6 +209,16 @@ def sheet_ids(drive):
     return folder.get('folderId'), {item['file']: item['id'] for item in folder.get('files', []) if item.get('file')}
 
 
+def failed_downloads(drive):
+    """Archivos que drive-download.py no pudo bajar (marcados con "error" en su manifest): (carpeta, item)."""
+    try:
+        with open(os.path.join(drive, 'manifest.json'), encoding='utf-8') as handle:
+            manifest = json.load(handle)
+    except FileNotFoundError:
+        return []
+    return [(folder, item) for folder, info in manifest.items() for item in info.get('files', []) if item.get('error')]
+
+
 def short(day):
     return f'{day.day}/{day.month:02d}'
 
@@ -262,7 +275,10 @@ def build(drive):
     if not os.path.isdir(folder):
         sys.exit(f'No existe la carpeta {folder}')
     folder_id, ids = sheet_ids(drive)
-    months, warnings_list, all_rows = [], [], []
+    failed = failed_downloads(drive)
+    warnings_list = [f'"{item["name"]}" (carpeta {name}) no se pudo descargar de Drive en esta sincronizacion '
+                     f'({item["error"]}); se vuelve a intentar en la proxima.' for name, item in failed]
+    months, all_rows = [], []
     for index, month in enumerate(MONTHS):
         path = month_file(folder, month)
         entry = {'name': month, 'status': 'sin-datos', 'period': None, 'sheet': None, 'firstDay': None, 'lastDay': None,
@@ -315,7 +331,8 @@ def build(drive):
         cutoff = date(YEAR, index + 1, end).isoformat()
     for index in range(with_data[-1] if with_data else 0):
         month = months[index]
-        if not month['sheet']:
+        # Si la hoja esta en Drive pero no bajo, ya tiene su aviso de descarga.
+        if not month['sheet'] and not any(name == META_DIR and is_month_name(item['name'], month['name']) for name, item in failed):
             warnings_list.append(f'{month["name"]}: no hay hoja del mes en la carpeta de Drive.')
             month['notice'] = 'Sin hoja en la carpeta de Drive'
     return all_rows, {
