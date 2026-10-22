@@ -5,13 +5,19 @@
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const SHORT_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const GROUP_CLASS = { Ventas: 'sales', Mensajes: 'messages', Reconocimiento: 'branding' };
-  const COLORS = { spend: '#2563eb', revenue: '#0d9488' };
+  const COLORS = { spend: '#2563eb', revenue: '#0d9488', costPerPurchase: '#db2777', costPerConversation: '#0f766e' };
   const CHART_METRICS = {
     spend: { label: 'Inversion y ventas', money: true, sub: 'Inversion en Meta Ads frente al valor de las compras atribuidas a los anuncios (S/)', series: [['spend', 'Inversion'], ['revenue', 'Valor de compras']] },
     purchases: { label: 'Compras', sub: 'Compras en la tienda online atribuidas a los anuncios (pixel de Meta)', series: [['purchases', 'Compras']] },
     conversations: { label: 'Conversaciones', sub: 'Conversaciones de WhatsApp iniciadas desde los anuncios', series: [['conversations', 'Conversaciones']] },
     clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campanas', series: [['clicks', 'Clics en el enlace']] },
+    // Costos por resultado: salen de sumar la inversion y los resultados de su tipo de campana en el mes (los
+    // mismos de los KPIs); un mes sin compras o sin conversaciones queda como hueco.
+    costPerPurchase: { label: 'Costo por compra', money: true, cost: true, sub: 'Inversion de la campana de Ventas / compras de cada mes (sin compras, hueco)', series: [['costPerPurchase', 'Costo por compra']] },
+    costPerConversation: { label: 'Costo por conversacion', money: true, cost: true, sub: 'Inversion de la campana de Mensajes / conversaciones de cada mes (sin conversaciones, hueco)', series: [['costPerConversation', 'Costo por conversacion']] },
   };
+  // Grupo de campanas del que sale cada costo por resultado y su resultado.
+  const COST_BASES = { costPerPurchase: ['Ventas', 'purchases'], costPerConversation: ['Mensajes', 'conversations'] };
   // Columnas de los mejores anuncios segun el tipo de campana.
   const AD_COLUMNS = {
     Ventas: [['purchases', 'Compras'], ['revenue', 'Valor', true], ['clicks', 'Clics']],
@@ -191,7 +197,7 @@
     const labels = SHORT_MONTHS.slice(0, lastIndex + 1).map((name, index) => months[index]?.status === 'parcial' ? `${name}*` : name);
     const datasets = config.series.map(([key, name]) => ({
       label: name,
-      data: months.map(month => hasData(month) ? Number(month.kpis[key] || 0) : null),
+      data: months.map(month => chartValue(month, key)),
       borderColor: color(key),
       backgroundColor: color(key),
       borderWidth: 2.5,
@@ -204,7 +210,7 @@
     const axis = { beginAtZero: true, grace: '15%', border: { display: false }, ticks: { color: '#7890b5', font: { size: 10 } } };
     const scales = {
       x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#7890b5', font: { size: 10 } } },
-      y: { ...axis, grid: { color: 'rgba(148,163,184,.20)' }, ticks: { ...axis.ticks, callback: value => fmtCompact(value, config.money) } },
+      y: { ...axis, grid: { color: 'rgba(148,163,184,.20)' }, ticks: { ...axis.ticks, callback: value => (config.cost && Math.abs(value) < 10 ? fmtMoney(value) : fmtCompact(value, config.money)) } },
     };
     if (state.chart) state.chart.destroy();
     state.chart = new Chart(canvas, {
@@ -219,7 +225,7 @@
           legend: { display: false },
           tooltip: { callbacks: {
             title: items => { const month = months[items[0].dataIndex]; return `${month.name}${month.status === 'parcial' ? ` (parcial, ${month.period})` : month.notice ? ` (${month.notice.toLowerCase()})` : ''}`; },
-            label: context => context.raw == null ? ` ${context.dataset.label}: sin datos` : ` ${context.dataset.label}: ${config.money ? fmtMoney(context.raw) : fmtCount(context.raw)}`,
+            label: context => context.raw == null ? ` ${context.dataset.label}: sin datos` : ` ${context.dataset.label}: ${config.cost ? fmtCost(context.raw) : config.money ? fmtMoney(context.raw) : fmtCount(context.raw)}`,
             footer: items => {
               const month = months[items[0].dataIndex];
               return metric === 'spend' && hasData(month) ? `ROAS ${fmtRoas(ratio(month.kpis.revenue, month.kpis.spend))}` : '';
@@ -229,21 +235,59 @@
         scales,
         onClick: (event, elements) => { if (elements[0]) selectMonth(months[elements[0].index].name); },
       },
+      // Valor en cada punto, menos los ceros y los huecos. Va arriba en un pico y abajo en un valle, para no
+      // montarse en la linea, con halo blanco; si choca con otra etiqueta (inversion y valor de compras van en el
+      // mismo cuadro) o se sale del grafico prueba el otro lado y, si tampoco cabe, se omite (queda en el tooltip).
       plugins: [{ id: 'valueLabels', afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
+        const placed = [];
+        const overlaps = box => placed.some(other => !(box.right < other.left || box.left > other.right || box.bottom < other.top || box.top > other.bottom));
+        const top = chart.chartArea.top - 20;
+        const bottom = chart.chartArea.bottom;
         ctx.save();
         ctx.font = '600 9px Inter, sans-serif';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,.92)';
         chart.data.datasets.forEach((dataset, index) => {
           ctx.fillStyle = dataset.backgroundColor;
           chart.getDatasetMeta(index).data.forEach((dot, point) => {
             const value = dataset.data[point];
-            if (value) ctx.fillText(fmtCompact(value, config.money), dot.x, dot.y - 11);
+            if (!isNum(value) || Number(value) === 0) return;
+            // Soles sin decimales, salvo montos chicos (un costo de S/ 0.45 no debe leerse S/ 0).
+            const text = config.money && Math.abs(value) < 10 ? fmtCost(value) : fmtCompact(value, config.money);
+            const half = ctx.measureText(text).width / 2 + 2;
+            const before = dataset.data[point - 1];
+            const after = dataset.data[point + 1];
+            const valley = isNum(before) && isNum(after) && value < before && value < after;
+            const sides = valley ? [dot.y + 12, dot.y - 11] : [dot.y - 11, dot.y + 12];
+            // Pegada al borde, la etiqueta se corre hacia adentro para no cortarse.
+            const x = Math.min(Math.max(dot.x, half), chart.width - half);
+            const box = sides
+              .map(y => ({ y, left: x - half, right: x + half, top: y - 6, bottom: y + 6 }))
+              .find(item => item.top >= top && item.bottom <= bottom && !overlaps(item));
+            if (!box) return;
+            placed.push(box);
+            ctx.strokeText(text, x, box.y);
+            ctx.fillText(text, x, box.y);
           });
         });
         ctx.restore();
       } }],
     });
+  }
+  // Valor de un indicador del grafico en un mes; sin hoja del mes, hueco. Los costos, de las sumas de su tipo de
+  // campana (sin resultados, hueco).
+  function chartValue(month, key) {
+    if (!hasData(month)) return null;
+    if (COST_BASES[key]) {
+      const [group, result] = COST_BASES[key];
+      const totals = groupTotals([month], group);
+      return ratio(totals.spend, totals[result]);
+    }
+    return Number(month.kpis[key] || 0);
   }
 
   // ── Mes seleccionado ───────────────────────────────────────────────────────
