@@ -21,9 +21,9 @@
   const CHART_COLLAPSED_KEY = 'tlm-chart-collapsed-v1';
   const CHART_METRIC_KEY = 'tlm-ads-chart-metric-v1';
   // Web App de Apps Script (scripts/sync-trigger.gs) que lanza el workflow sync-ads-data.yml con un token
-  // guardado en Apps Script: el tablero no lleva credenciales ni abre GitHub. Vacio mientras no se publique;
-  // entonces el boton solo vuelve a leer los datos publicados por la sincronizacion automatica.
-  const SYNC_TRIGGER_ENDPOINT = '';
+  // guardado en Apps Script: el tablero no lleva credenciales ni abre GitHub. Si quedara vacio, el boton solo
+  // vuelve a leer los datos publicados por la sincronizacion automatica.
+  const SYNC_TRIGGER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyoEjOyQ8FfCZLnulkTVO8C2KURxLQfWFZwppLM-EMpcZsQNW0NvN4qq6MOKODxuXTMHA/exec';
   const SYNC_TRIGGER_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/exec$/;
   const SYNC_SCHEDULE = 'automatica 7:00 a. m., 12:00 m. y 5:00 p. m.';
   const SYNC_POLL_MS = 15000;
