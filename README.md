@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.4.0`.
+Version actual: `v1.4.1`.
 
 ## Versionado
 
@@ -14,9 +14,11 @@ El proyecto usa la nomenclatura `vMAJOR.MINOR.PATCH`:
 - `MINOR`: nuevos modulos, indicadores o funciones compatibles.
 - `PATCH`: correcciones visuales, de datos o funcionamiento.
 
+Convenciones de pantalla (desde la v1.4.1, alineadas con Royal Baby): soles como `S/. 1,234.56` (los datos sincronizados siguen trayendo `symbol: "S/"` y el tablero lo muestra con punto), un dato vacio como `—` (raya), meses "Septiembre"/"Sep", tildes y eñes en todos los textos ("Campaña"), pestaña del mes activa en los tonos verde azulado de la marca y tablas con numeros monoespaciados a la derecha. Al cambiar un archivo se sube su `?v=` en `index.html` a la version nueva.
+
 ## Modulos
 
-- Gasto publicitario de la cuenta de Meta Ads (S/).
+- Gasto publicitario de la cuenta de Meta Ads (S/.).
   - Tres tipos de campana: Ventas (compras en la tienda online), Mensajes (conversaciones de WhatsApp y
     visitas al perfil de Instagram) y Reconocimiento (ThruPlays).
   - KPIs acumulados del ano: inversion, valor de compras y ROAS, compras, conversaciones y clics.
@@ -25,7 +27,7 @@ El proyecto usa la nomenclatura `vMAJOR.MINOR.PATCH`:
     Mensajes / conversaciones), los mismos costos de los KPIs; un mes sin compras o sin conversaciones queda
     como hueco. Cada punto lleva su valor: arriba en un pico, abajo en un valle, con halo blanco y dentro del
     grafico; sin etiqueta en los ceros y omitida si choca con otra (queda en el tooltip). Los soles van sin
-    decimales salvo montos menores a S/ 10.
+    decimales salvo montos menores a S/. 10.
   - Por mes: resumen con la distribucion por tipo de campana, embudo de compra de la campana de Ventas
     (impresiones > clics > visitas a la web > carrito > pagos iniciados > compras) y tabla de campanas con
     sus mejores anuncios (con vista previa en Meta).

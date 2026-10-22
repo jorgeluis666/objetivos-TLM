@@ -97,7 +97,7 @@
     if (status) {
       status.textContent = state.draft
         ? 'Borrador en este navegador: exporta el archivo para publicarlo.'
-        : `Publicado al ${state.published?.updatedAt ? state.published.updatedAt.split('-').reverse().join('/') : '-'}.`;
+        : `Publicado al ${state.published?.updatedAt ? state.published.updatedAt.split('-').reverse().join('/') : '—'}.`;
       status.classList.toggle('draft', state.draft);
     }
     if (discard) discard.hidden = !state.draft;

@@ -122,7 +122,7 @@
 
   function formatSize(bytes) {
     const value = Number(bytes);
-    if (!Number.isFinite(value) || value <= 0) return '--';
+    if (!Number.isFinite(value) || value <= 0) return '—';
     if (value < 1024) return `${value} B`;
     if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
@@ -135,13 +135,13 @@
 
   function formatDate(iso) {
     const date = toDate(iso);
-    if (Number.isNaN(date.getTime())) return '--';
+    if (Number.isNaN(date.getTime())) return '—';
     return `${date.getDate()} ${MONTHS[date.getMonth()].slice(0, 3)} ${date.getFullYear()}`;
   }
 
   function formatLongDate(iso) {
     const date = toDate(iso);
-    if (Number.isNaN(date.getTime())) return '--';
+    if (Number.isNaN(date.getTime())) return '—';
     return `${date.getDate()} de ${MONTHS[date.getMonth()]} de ${date.getFullYear()}`;
   }
 
@@ -228,8 +228,8 @@
 
     const cards = [
       { label: 'Archivos en la carpeta', value: String(total), hint: `${latest} vigentes + ${total - latest} versiones anteriores` },
-      { label: 'Reportes de campana', value: String(campaignReports), hint: 'Semanales, mensuales y parciales' },
-      { label: 'Ultimo documento', value: newest ? formatDate(newest.modifiedTime) : '--', hint: newest ? newest.name : 'Sin registros' },
+      { label: 'Reportes de campaña', value: String(campaignReports), hint: 'Semanales, mensuales y parciales' },
+      { label: 'Último documento', value: newest ? formatDate(newest.modifiedTime) : '—', hint: newest ? newest.name : 'Sin registros' },
       { label: 'Peso del archivo', value: formatSize(weight), hint: 'Total almacenado en Drive' },
     ];
 
@@ -276,7 +276,7 @@
       : `${rows.length} de ${state.reports.length} documentos`;
 
     if (!state.reports.length) {
-      els.body.innerHTML = '<tr><td class="table-empty" colspan="7">La carpeta de reportes todavia no tiene documentos.</td></tr>';
+      els.body.innerHTML = '<tr><td class="table-empty" colspan="7">La carpeta de reportes todavía no tiene documentos.</td></tr>';
       return;
     }
     if (!rows.length) {
@@ -294,7 +294,7 @@
         <td class="date-col">${report.period ? esc(report.period.label) : '<span class="no-data">Sin periodo</span>'}${report.range ? `<span class="report-range">${esc(report.range)}</span>` : ''}</td>
         <td><span class="format-tag ${report.isVideo ? 'video' : 'pdf'}">${esc(report.format)}</span></td>
         <td class="num">${formatSize(report.sizeBytes)}</td>
-        <td class="date-col">${formatDate(report.modifiedTime)}${report.latest ? '<span class="version-flag current">Version vigente</span>' : '<span class="version-flag old">Version anterior</span>'}</td>
+        <td class="date-col">${formatDate(report.modifiedTime)}${report.latest ? '<span class="version-flag current">Versión vigente</span>' : '<span class="version-flag old">Versión anterior</span>'}</td>
         <td>
           <div class="report-actions">
             <button type="button" class="report-btn primary" data-preview="${esc(report.id)}">Ver</button>

@@ -40,7 +40,7 @@
       title: 'Archivo de Reportes',
       caption: 'Reportes en Drive y generador semanal',
       status: () => `Datos al ${cutoffLabel()}`,
-      source: 'Fuente: carpeta de reportes en Google Drive / Meta Ads por dia',
+      source: 'Fuente: carpeta de reportes en Google Drive / Meta Ads por día',
       footer: 'Sincronizado por Agencia Lima Retail',
     },
     'view-log': {

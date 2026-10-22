@@ -5,7 +5,7 @@
   const COLORS = { spend: '#2563eb', revenue: '#0d9488' };
   // Indicadores acumulables del mes.
   const METRICS = [
-    { key: 'spend', label: 'Inversion', money: true },
+    { key: 'spend', label: 'Inversión', money: true },
     { key: 'revenue', label: 'Valor de compras', money: true, note: 'Atribuido a los anuncios por el pixel de Meta' },
     { key: 'purchases', label: 'Compras' },
     { key: 'addToCart', label: 'Agregados al carrito' },
@@ -14,15 +14,15 @@
     { key: 'thruplays', label: 'ThruPlays' },
   ];
   const CHART_METRICS = {
-    spend: { label: 'Inversion', money: true, sub: 'Inversion acumulada en soles' },
+    spend: { label: 'Inversión', money: true, sub: 'Inversión acumulada en soles' },
     revenue: { label: 'Valor de compras', money: true, sub: 'Valor de las compras atribuidas a los anuncios' },
     purchases: { label: 'Compras', sub: 'Compras en la tienda online' },
     conversations: { label: 'Conversaciones', sub: 'Conversaciones de WhatsApp iniciadas' },
-    clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campanas' },
+    clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campañas' },
   };
   const KPI_KEYS = ['spend', 'revenue', 'purchases', 'conversations', 'clicks'];
   const KPI_TITLES = {
-    spend: 'Inversion proyectada',
+    spend: 'Inversión proyectada',
     revenue: 'Valor de compras proyectado',
     purchases: 'Compras proyectadas',
     conversations: 'Conversaciones proyectadas',
@@ -33,14 +33,15 @@
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const isNum = value => value != null && value !== '' && Number.isFinite(Number(value));
-  const symbol = () => state.data?.platform?.symbol || 'S/';
-  const fmtCount = value => isNum(value) ? Math.round(Number(value)).toLocaleString('es-PE') : '-';
+  // Moneda "S/. " como Royal Baby: los datos traen "S/" y se muestra con punto.
+  const symbol = () => { const value = state.data?.platform?.symbol || 'S/.'; return value === 'S/' ? 'S/.' : value; };
+  const fmtCount = value => isNum(value) ? Math.round(Number(value)).toLocaleString('es-PE') : '—';
   function fmtMoney(value, digits = 2) {
-    if (!isNum(value)) return '-';
+    if (!isNum(value)) return '—';
     return `${symbol()} ${Number(value).toLocaleString('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
   }
   const fmtCost = value => fmtMoney(value, isNum(value) && Number(value) < 0.1 ? 3 : 2);
-  const fmtRoas = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '-';
+  const fmtRoas = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '—';
   const fmtValue = (value, metric) => (metric.money ? fmtMoney(value) : fmtCount(value));
   function fmtCompact(value, money) {
     if (!isNum(value)) return '';
@@ -56,7 +57,7 @@
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
     return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
   }
-  const longDate = date => (date ? `${date.getDate()} de ${MONTHS[date.getMonth()].toLowerCase()}` : '-');
+  const longDate = date => (date ? `${date.getDate()} de ${MONTHS[date.getMonth()].toLowerCase()}` : '—');
   const hasData = month => Boolean(month?.kpis);
   function groupTotals(month, group) {
     const totals = { spend: 0, purchases: 0, revenue: 0, conversations: 0 };
@@ -111,7 +112,7 @@
     const costs = [
       { label: 'Costo por compra (Ventas)', value: ratio(sales.spend, sales.purchases), reference: previous ? ratio(salesBefore.spend, salesBefore.purchases) : null, inverse: true },
       { label: 'ROAS total', value: ratio(month.kpis.revenue, month.kpis.spend), reference: previous ? ratio(previous.kpis.revenue, previous.kpis.spend) : null, roas: true },
-      { label: 'Costo por conversacion (Mensajes)', value: ratio(messages.spend, messages.conversations), reference: previous ? ratio(messagesBefore.spend, messagesBefore.conversations) : null, inverse: true },
+      { label: 'Costo por conversación (Mensajes)', value: ratio(messages.spend, messages.conversations), reference: previous ? ratio(messagesBefore.spend, messagesBefore.conversations) : null, inverse: true },
       { label: 'Costo por clic en el enlace', value: ratio(month.kpis.spend, month.kpis.clicks), reference: previous ? ratio(previous.kpis.spend, previous.kpis.clicks) : null, inverse: true },
     ];
     costs.forEach(cost => { cost.change = pctChange(cost.value, cost.reference); });
@@ -152,11 +153,11 @@
     const host = document.getElementById('projection-kpis');
     if (!host) return;
     const prev = projection.previousName ? `vs ${projection.previousName}` : '';
-    const progress = projection.closed ? 'Mes cerrado' : `Dia ${projection.lastDay} de ${projection.daysInMonth} | quedan ${projection.daysLeft} dias`;
+    const progress = projection.closed ? 'Mes cerrado' : `Día ${projection.lastDay} de ${projection.daysInMonth} | quedan ${projection.daysLeft} días`;
     const cards = KPI_KEYS.map(key => projection.byKey[key]).map(metric => {
       const pace = metric.money ? fmtMoney(metric.pace) : fmtCount(metric.pace);
       const change = isNum(metric.change) ? ` | ${metric.change >= 0 ? '+' : ''}${metric.change.toFixed(0)}% ${prev}` : '';
-      return `<div class="kpi-pill"><span>${esc(KPI_TITLES[metric.key] || metric.label)}</span><strong>${fmtValue(metric.projected, metric)}</strong><small>${esc(`${pace} por dia${change}`)}</small></div>`;
+      return `<div class="kpi-pill"><span>${esc(KPI_TITLES[metric.key] || metric.label)}</span><strong>${fmtValue(metric.projected, metric)}</strong><small>${esc(`${pace} por día${change}`)}</small></div>`;
     }).join('');
     host.innerHTML = `<div class="projection-kpi-row"><div class="projection-kpi-head"><span class="platform-pill meta">${esc(state.data.platform.label)}</span><small>${esc(state.data.platform.currency)} | ${esc(progress)}</small></div><div class="kpi-strip cols-${KPI_KEYS.length}">${cards}</div></div>`;
   }
@@ -169,17 +170,17 @@
     const actualHead = document.getElementById('projection-actual-head');
     if (actualHead) actualHead.textContent = `Actual al ${projection.lastDay}-${projection.shortMonth}`;
     const closeHead = document.getElementById('projection-close-head');
-    if (closeHead) closeHead.textContent = `Proyeccion al ${projection.daysInMonth}-${projection.shortMonth}`;
+    if (closeHead) closeHead.textContent = `Proyección al ${projection.daysInMonth}-${projection.shortMonth}`;
 
-    const pace = projection.startOffset > 0 ? ` | pauta desde el dia ${projection.startOffset + 1}` : '';
-    const headRow = `<tr class="projection-platform-row"><td colspan="6"><span class="platform-pill meta">${esc(state.data.platform.label)}</span><small>${esc(state.data.platform.currency)} | ritmo sobre ${projection.days} dias${pace}</small></td></tr>`;
+    const pace = projection.startOffset > 0 ? ` | pauta desde el día ${projection.startOffset + 1}` : '';
+    const headRow = `<tr class="projection-platform-row"><td colspan="6"><span class="platform-pill meta">${esc(state.data.platform.label)}</span><small>${esc(state.data.platform.currency)} | ritmo sobre ${projection.days} días${pace}</small></td></tr>`;
     const metricRows = projection.metrics.map(metric => `
       <tr>
         <td class="campaign-name">${esc(metric.label)}${metric.note ? `<small class="projection-note-inline">${esc(metric.note)}</small>` : ''}</td>
         <td class="num">${fmtValue(metric.actual, metric)}</td>
         <td class="num">${metric.money ? fmtMoney(metric.pace) : fmtCount(metric.pace)}</td>
         <td class="num projection-value">${fmtValue(metric.projected, metric)}</td>
-        <td class="num">${isNum(metric.reference) ? fmtValue(metric.reference, metric) : '<span class="no-data">-</span>'}</td>
+        <td class="num">${isNum(metric.reference) ? fmtValue(metric.reference, metric) : '<span class="no-data">—</span>'}</td>
         <td>${changePill(metric.change, { neutral: metric.key === 'spend' })}</td>
       </tr>`).join('');
     const groups = Object.entries(projection.projectedGroups).sort((a, b) => b[1] - a[1]);
@@ -188,11 +189,11 @@
       const reference = projection.previous?.spendByGroup?.[group];
       return `
       <tr class="projection-sub-row">
-        <td class="campaign-name">Inversion ${esc(group)}</td>
+        <td class="campaign-name">Inversión ${esc(group)}</td>
         <td class="num">${fmtMoney(actual)}</td>
         <td class="num">${fmtMoney(actual / projection.days)}</td>
         <td class="num projection-value">${fmtMoney(value)}</td>
-        <td class="num">${isNum(reference) ? fmtMoney(reference) : '<span class="no-data">-</span>'}</td>
+        <td class="num">${isNum(reference) ? fmtMoney(reference) : '<span class="no-data">—</span>'}</td>
         <td>${changePill(pctChange(value, reference), { neutral: true })}</td>
       </tr>`;
     }).join('') : '';
@@ -202,9 +203,9 @@
       <tr class="projection-cost-row">
         <td class="campaign-name">${esc(cost.label)}</td>
         <td class="num">${format(cost.value)}</td>
-        <td class="num"><span class="no-data">-</span></td>
+        <td class="num"><span class="no-data">—</span></td>
         <td class="num projection-value">${format(cost.value)}</td>
-        <td class="num">${isNum(cost.reference) ? format(cost.reference) : '<span class="no-data">-</span>'}</td>
+        <td class="num">${isNum(cost.reference) ? format(cost.reference) : '<span class="no-data">—</span>'}</td>
         <td>${changePill(cost.change, { inverse: cost.inverse })}</td>
       </tr>`;
     }).join('');
@@ -254,7 +255,7 @@
     const config = CHART_METRICS[metricKey];
     document.getElementById('projection-chart-sub').textContent = projection.closed
       ? `${projection.monthLabel} cerrado. ${config.sub}.`
-      : `Real hasta el dia ${projection.lastDay} y proyeccion hasta el ${projection.daysInMonth}. ${config.sub}.`;
+      : `Real hasta el día ${projection.lastDay} y proyección hasta el ${projection.daysInMonth}. ${config.sub}.`;
     document.querySelectorAll('#projection-metrics .series-toggle').forEach(item => {
       const active = item.dataset.series === metricKey;
       item.classList.toggle('active', active);
@@ -265,7 +266,7 @@
     if (legend) {
       legend.innerHTML = [
         `<span><i class="legend-line" style="background:${color}"></i><b>${esc(config.label)} real</b></span>`,
-        '<span><i class="legend-line dashed"></i><b>Proyeccion al cierre</b></span>',
+        '<span><i class="legend-line dashed"></i><b>Proyección al cierre</b></span>',
         projection.previousName ? `<span><i class="legend-line dotted"></i><b>Cierre de ${esc(projection.previousName)}</b></span>` : '',
       ].join('');
     }
@@ -273,7 +274,7 @@
     const canvas = document.getElementById('chart-projection');
     if (!canvas) return;
     if (typeof Chart === 'undefined') {
-      canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Grafico no disponible sin conexion.</strong><span>La tabla de proyeccion sigue visible debajo.</span></div>';
+      canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Gráfico no disponible sin conexión.</strong><span>La tabla de proyección sigue visible debajo.</span></div>';
       return;
     }
     const labels = Array.from({ length: projection.daysInMonth }, (_, index) => `${index + 1} ${projection.shortMonth}`);
@@ -281,15 +282,15 @@
     const base = { borderColor: color, backgroundColor: color, pointRadius: 0, pointHoverRadius: 5, tension: 0 };
     const datasets = [
       { ...base, label: `${config.label} real`, data: data.real, borderWidth: 2.5 },
-      { ...base, label: `${config.label} proyeccion`, data: data.forecast, borderWidth: 2, borderDash: [6, 5] },
+      { ...base, label: `${config.label} proyección`, data: data.forecast, borderWidth: 2, borderDash: [6, 5] },
     ];
     if (isNum(data.reference)) {
       datasets.push({ ...base, label: `Cierre ${projection.previousName}`, data: labels.map(() => data.reference), borderWidth: 1.2, borderDash: [2, 4], pointHoverRadius: 0, borderColor: `${color}88` });
     }
-    const axis = { beginAtZero: true, grace: '8%', border: { display: false }, ticks: { color: '#7890b5', font: { size: 10 } } };
+    const axis = { beginAtZero: true, grace: '8%', border: { display: false }, ticks: { color: '#94A3B8', font: { size: 10 } } };
     const scales = {
-      x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#7890b5', font: { size: 10 }, maxTicksLimit: 10, autoSkip: true } },
-      y: { ...axis, grid: { color: 'rgba(148,163,184,.20)' }, ticks: { ...axis.ticks, callback: value => fmtCompact(value, config.money) } },
+      x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#94A3B8', font: { size: 10 }, maxTicksLimit: 10, autoSkip: true } },
+      y: { ...axis, grid: { color: 'rgba(15,23,42,.06)' }, ticks: { ...axis.ticks, callback: value => fmtCompact(value, config.money) } },
     };
 
     if (state.chart) state.chart.destroy();
@@ -321,19 +322,19 @@
     const desc = document.getElementById('projection-desc');
     if (desc) {
       desc.textContent = projection.closed
-        ? `${projection.monthLabel} esta cerrado: se muestran sus totales reales frente a ${projection.previousName || 'el mes anterior'}.`
-        : `Cierre estimado de ${projection.monthLabel} con los datos reales del modulo Gasto publicitario al ${longDate(projection.cutoff)} (${projection.lastDay} de ${projection.daysInMonth} dias), manteniendo el ritmo diario promedio del mes.`;
+        ? `${projection.monthLabel} está cerrado: se muestran sus totales reales frente a ${projection.previousName || 'el mes anterior'}.`
+        : `Cierre estimado de ${projection.monthLabel} con los datos reales del módulo Gasto publicitario al ${longDate(projection.cutoff)} (${projection.lastDay} de ${projection.daysInMonth} días), manteniendo el ritmo diario promedio del mes.`;
     }
     const title = document.getElementById('projection-title');
-    if (title) title.textContent = `Linea de tiempo | ${projection.monthLabel}`;
+    if (title) title.textContent = `Línea de tiempo · ${projection.monthLabel}`;
     const tableSub = document.getElementById('projection-table-sub');
     if (tableSub) {
-      tableSub.textContent = `Ritmo diario = acumulado real / dias con pauta. Proyeccion = actual + ritmo x ${projection.daysLeft} dias restantes. La ultima columna compara la proyeccion con el cierre de ${projection.previousName || 'el mes anterior'}.`;
+      tableSub.textContent = `Ritmo diario = acumulado real / días con pauta. Proyección = actual + ritmo x ${projection.daysLeft} días restantes. La última columna compara la proyección con el cierre de ${projection.previousName || 'el mes anterior'}.`;
     }
     const note = document.getElementById('projection-note');
     if (note) {
-      const sheet = projection.month.sheet?.title ? `hoja "${projection.month.sheet.title}"` : 'exportacion de Meta Ads';
-      note.textContent = `La linea real se traza con el ritmo promedio del periodo. Pocas compras al inicio del mes hacen que su proyeccion sea muy variable. Fuente del mes: ${sheet}.`;
+      const sheet = projection.month.sheet?.title ? `hoja "${projection.month.sheet.title}"` : 'exportación de Meta Ads';
+      note.textContent = `La línea real se traza con el ritmo promedio del periodo. Pocas compras al inicio del mes hacen que su proyección sea muy variable. Fuente del mes: ${sheet}.`;
     }
   }
 
@@ -348,7 +349,7 @@
     // El modulo puede abrirse antes de que Gasto publicitario termine de cargar; tlm:data-updated lo reintenta.
     const data = window.TLMObjectives?.snapshot?.();
     if (!data) {
-      renderEmpty('Esperando los datos del modulo Gasto publicitario...');
+      renderEmpty('Esperando los datos del módulo Gasto publicitario...');
       return;
     }
     state.data = data;

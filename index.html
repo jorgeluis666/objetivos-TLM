@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Little Market | Gasto publicitario 2026</title>
+<title>The Little Market · Gasto publicitario 2026</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/dashboard.css?v=1.3.1">
+<link rel="stylesheet" href="css/dashboard.css?v=1.4.1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.4.0</span></div></div>
-    <div class="s-group-lbl">Modulos activos</div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.4.1</span></div></div>
+    <div class="s-group-lbl">Módulos activos</div>
     <button title="Gasto publicitario" class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
       <div class="s-text"><div class="s-title-nav">Gasto publicitario</div><div class="s-desc-nav">Meta Ads</div></div>
@@ -44,11 +44,11 @@
     </div>
 </aside>
   <main class="main">
-    <div class="topbar"><div class="topbar-left"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Minimizar panel" title="Minimizar panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><path class="sidebar-toggle-arrow" d="m16 9-3 3 3 3"/></svg></button><div><div class="topbar-title" id="topbar-title">Gasto publicitario 2026</div><div class="topbar-caption" id="topbar-caption">Agencia Lima Retail</div></div></div><div class="topbar-meta"><div class="data-status" id="data-status"><button type="button" class="topbar-pill sync ok" id="data-status-btn" aria-expanded="false" aria-controls="data-status-card" title="Ver el detalle de la actualizacion"><span class="sync-dot"></span><span id="topbar-status">Cargando datos...</span><svg class="status-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><button type="button" class="refresh-sheet-btn" id="ads-sync-btn">Actualizar</button><div class="data-status-card" id="data-status-card" hidden><div class="data-status-head">Actualizacion de los datos</div><div class="data-status-row"><span>Datos</span><strong id="status-data">-</strong></div><div class="data-status-row"><span>Ultima sincronizacion</span><strong id="status-last">-</strong></div><div class="data-status-row"><span>Proximo automatico</span><strong id="status-next">-</strong></div><div class="data-status-row"><span>Hoja del mes</span><strong id="status-file">-</strong></div><div class="data-status-row"><span>Fuente</span><strong><a id="ads-folder-link" href="https://drive.google.com/drive/folders/1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie" target="_blank" rel="noopener">Carpeta Meta Ads en Drive</a></strong></div><p class="data-status-note" id="ads-sync-status" aria-live="polite" hidden></p><div class="data-status-note" id="ads-warnings" hidden></div></div></div></div></div>
+    <div class="topbar"><div class="topbar-left"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Minimizar panel" title="Minimizar panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><path class="sidebar-toggle-arrow" d="m16 9-3 3 3 3"/></svg></button><div><div class="topbar-title" id="topbar-title">Gasto publicitario 2026</div><div class="topbar-caption" id="topbar-caption">Agencia Lima Retail</div></div></div><div class="topbar-meta"><div class="data-status" id="data-status"><button type="button" class="topbar-pill sync ok" id="data-status-btn" aria-expanded="false" aria-controls="data-status-card" title="Ver el detalle de la actualización"><span class="sync-dot"></span><span id="topbar-status">Cargando datos...</span><svg class="status-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><button type="button" class="refresh-sheet-btn" id="ads-sync-btn">Actualizar</button><div class="data-status-card" id="data-status-card" hidden><div class="data-status-head">Actualización de los datos</div><div class="data-status-row"><span>Datos</span><strong id="status-data">—</strong></div><div class="data-status-row"><span>Última sincronización</span><strong id="status-last">—</strong></div><div class="data-status-row"><span>Próximo automático</span><strong id="status-next">—</strong></div><div class="data-status-row"><span>Hoja del mes</span><strong id="status-file">—</strong></div><div class="data-status-row"><span>Fuente</span><strong><a id="ads-folder-link" href="https://drive.google.com/drive/folders/1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie" target="_blank" rel="noopener">Carpeta Meta Ads en Drive</a></strong></div><p class="data-status-note" id="ads-sync-status" aria-live="polite" hidden></p><div class="data-status-note" id="ads-warnings" hidden></div></div></div></div></div>
     <div class="content">
       <section class="view visible" id="view-obj">
-        <h1 class="section-title">Meta Ads 2026 por mes</h1>
-        <p class="section-desc">Inversion y resultados de la cuenta de Meta Ads (Facebook e Instagram) que administramos, facturada en soles: ventas en la tienda online, conversaciones de WhatsApp y reconocimiento de marca.</p>
+        <h1 class="section-title">Gasto publicitario · Meta Ads 2026 por mes</h1>
+        <p class="section-desc">Inversión y resultados de la cuenta de Meta Ads (Facebook e Instagram) que administramos, facturada en soles: ventas en la tienda online, conversaciones de WhatsApp y reconocimiento de marca.</p>
         <div class="month-tabs" id="month-tabs" role="group" aria-label="Mes de los indicadores"></div>
         <div class="panel period-panel">
           <div class="period-head">
@@ -61,29 +61,29 @@
           <div class="kpi-strip" id="kpi-strip" role="group" aria-label="Resumen del periodo"></div>
         </div>
         <div class="panel chart-panel" id="chart-panel">
-          <div class="panel-head chart-panel-head"><div><div class="panel-title" id="chart-title">Evolucion mensual | Inversion y ventas | 2026</div><div class="panel-sub" id="chart-sub"></div></div><div class="chart-controls"><button type="button" class="chart-toggle" id="chart-toggle-btn" aria-expanded="true" aria-controls="monthly-chart-body" title="Minimizar grafico">-</button><div class="chart-series-toggles" id="chart-series-toggles" role="group" aria-label="Indicador del grafico"><label class="series-toggle active" data-series="spend"><input type="radio" name="ads-chart-metric" value="spend" checked>Inversion y ventas</label><label class="series-toggle" data-series="purchases"><input type="radio" name="ads-chart-metric" value="purchases">Compras</label><label class="series-toggle" data-series="conversations"><input type="radio" name="ads-chart-metric" value="conversations">Conversaciones</label><label class="series-toggle" data-series="clicks"><input type="radio" name="ads-chart-metric" value="clicks">Clics</label><label class="series-toggle" data-series="costPerPurchase"><input type="radio" name="ads-chart-metric" value="costPerPurchase">Costo por compra</label><label class="series-toggle" data-series="costPerConversation"><input type="radio" name="ads-chart-metric" value="costPerConversation">Costo por conversacion</label></div><div class="chart-legend" id="chart-legend"></div></div></div>
+          <div class="panel-head chart-panel-head"><div><div class="panel-title" id="chart-title">Evolución mensual · Inversión y ventas · 2026</div><div class="panel-sub" id="chart-sub"></div></div><div class="chart-controls"><button type="button" class="chart-toggle" id="chart-toggle-btn" aria-expanded="true" aria-controls="monthly-chart-body" title="Minimizar gráfico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button><div class="chart-series-toggles" id="chart-series-toggles" role="group" aria-label="Indicador del gráfico"><label class="series-toggle active" data-series="spend"><input type="radio" name="ads-chart-metric" value="spend" checked>Inversión y ventas</label><label class="series-toggle" data-series="purchases"><input type="radio" name="ads-chart-metric" value="purchases">Compras</label><label class="series-toggle" data-series="conversations"><input type="radio" name="ads-chart-metric" value="conversations">Conversaciones</label><label class="series-toggle" data-series="clicks"><input type="radio" name="ads-chart-metric" value="clicks">Clics</label><label class="series-toggle" data-series="costPerPurchase"><input type="radio" name="ads-chart-metric" value="costPerPurchase">Costo por compra</label><label class="series-toggle" data-series="costPerConversation"><input type="radio" name="ads-chart-metric" value="costPerConversation">Costo por conversación</label></div><div class="chart-legend" id="chart-legend"></div></div></div>
           <div class="chart-wrap h-360" id="monthly-chart-body"><canvas id="chart-monthly"></canvas></div>
         </div>
         <div class="ads-platforms" id="ads-platforms"></div>
         <div class="panel campaigns-panel">
-          <div class="panel-head campaigns-panel-head"><div><div class="panel-title" id="campaigns-title">Campanas del mes</div><div class="panel-sub" id="campaigns-sub"></div></div><div class="chart-series-toggles" id="campaigns-filter" role="group" aria-label="Filtrar por tipo de campana"><label class="series-toggle active" data-series="all"><input type="radio" name="ads-group-filter" value="all" checked>Todas</label><label class="series-toggle" data-series="Ventas"><input type="radio" name="ads-group-filter" value="Ventas">Ventas</label><label class="series-toggle" data-series="Mensajes"><input type="radio" name="ads-group-filter" value="Mensajes">Mensajes</label><label class="series-toggle" data-series="Reconocimiento"><input type="radio" name="ads-group-filter" value="Reconocimiento">Reconocimiento</label></div></div>
-          <div class="table-scroll"><table class="data-table campaigns-table ads-table"><thead><tr><th>Campana</th><th>Tipo</th><th class="num">Inversion</th><th class="num">% del mes</th><th class="num">Resultado principal</th><th class="num">Impresiones</th><th class="num">CPM</th><th class="num">Clics en el enlace</th><th class="num">Costo por clic</th><th class="num">Compras</th><th class="num">Valor de compras</th><th class="num">ROAS</th><th>Mejores anuncios</th></tr></thead><tbody id="campaigns-body"></tbody></table></div>
+          <div class="panel-head campaigns-panel-head"><div><div class="panel-title" id="campaigns-title">Campañas del mes</div><div class="panel-sub" id="campaigns-sub"></div></div><div class="chart-series-toggles" id="campaigns-filter" role="group" aria-label="Filtrar por tipo de campaña"><label class="series-toggle active" data-series="all"><input type="radio" name="ads-group-filter" value="all" checked>Todas</label><label class="series-toggle" data-series="Ventas"><input type="radio" name="ads-group-filter" value="Ventas">Ventas</label><label class="series-toggle" data-series="Mensajes"><input type="radio" name="ads-group-filter" value="Mensajes">Mensajes</label><label class="series-toggle" data-series="Reconocimiento"><input type="radio" name="ads-group-filter" value="Reconocimiento">Reconocimiento</label></div></div>
+          <div class="table-scroll"><table class="data-table campaigns-table ads-table"><thead><tr><th>Campaña</th><th>Tipo</th><th class="num">Inversión</th><th class="num">% del mes</th><th class="num">Resultado principal</th><th class="num">Impresiones</th><th class="num">CPM</th><th class="num">Clics en el enlace</th><th class="num">Costo por clic</th><th class="num">Compras</th><th class="num">Valor de compras</th><th class="num">ROAS</th><th>Mejores anuncios</th></tr></thead><tbody id="campaigns-body"></tbody></table></div>
         </div>
       </section>
 
       <section class="view" id="view-messages">
-        <h1 class="section-title">Proyecciones</h1>
-        <p class="section-desc" id="projection-desc">Cierre de mes estimado con los datos reales del modulo Gasto publicitario.</p>
+        <h1 class="section-title">Proyecciones · Cierre del mes en curso</h1>
+        <p class="section-desc" id="projection-desc">Cierre de mes estimado con los datos reales del módulo Gasto publicitario.</p>
         <div class="projection-kpis" id="projection-kpis" aria-label="KPIs proyectados al cierre del mes"></div>
         <div class="panel projection-panel" id="projection-panel">
           <div class="panel-head projection-panel-head">
             <div>
-              <div class="panel-title" id="projection-title">Linea de tiempo</div>
+              <div class="panel-title" id="projection-title">Línea de tiempo</div>
               <div class="panel-sub" id="projection-chart-sub">Cargando datos del mes en curso...</div>
             </div>
             <div class="projection-chart-controls">
             <div class="chart-series-toggles" id="projection-metrics" role="group" aria-label="Indicador proyectado">
-              <label class="series-toggle active" data-series="spend"><input type="radio" name="projection-metric" value="spend" checked>Inversion</label>
+              <label class="series-toggle active" data-series="spend"><input type="radio" name="projection-metric" value="spend" checked>Inversión</label>
               <label class="series-toggle" data-series="revenue"><input type="radio" name="projection-metric" value="revenue">Valor de compras</label>
               <label class="series-toggle" data-series="purchases"><input type="radio" name="projection-metric" value="purchases">Compras</label>
               <label class="series-toggle" data-series="conversations"><input type="radio" name="projection-metric" value="conversations">Conversaciones</label>
@@ -99,23 +99,23 @@
         <div class="panel projection-table-panel">
           <div class="panel-head">
             <div>
-              <div class="panel-title">Proyeccion al cierre del mes</div>
-              <div class="panel-sub" id="projection-table-sub">Ritmo diario = acumulado real / dias con pauta. La proyeccion mantiene ese ritmo hasta el ultimo dia del mes.</div>
+              <div class="panel-title">Proyección al cierre del mes</div>
+              <div class="panel-sub" id="projection-table-sub">Ritmo diario = acumulado real / días con pauta. La proyección mantiene ese ritmo hasta el último día del mes.</div>
             </div>
           </div>
           <div class="table-scroll">
             <table class="data-table projection-table">
-              <thead><tr><th>Indicador</th><th class="num" id="projection-actual-head">Actual</th><th class="num">Ritmo diario</th><th class="num" id="projection-close-head">Proyeccion al cierre</th><th class="num" id="projection-prev-head">Mes anterior</th><th>Vs mes anterior</th></tr></thead>
-              <tbody id="projection-body"><tr><td class="table-empty" colspan="6">Cargando proyeccion...</td></tr></tbody>
+              <thead><tr><th>Indicador</th><th class="num" id="projection-actual-head">Actual</th><th class="num">Ritmo diario</th><th class="num" id="projection-close-head">Proyección al cierre</th><th class="num" id="projection-prev-head">Mes anterior</th><th>Vs mes anterior</th></tr></thead>
+              <tbody id="projection-body"><tr><td class="table-empty" colspan="6">Cargando proyección...</td></tr></tbody>
             </table>
           </div>
         </div>
       </section>
 
       <section class="view" id="view-history">
-        <h1 class="section-title">Histórico de Campañas</h1>
+        <h1 class="section-title">Histórico de Campañas · Campañas de meses cerrados</h1>
         <p class="section-desc">Registro de las campañas de Meta Ads de los meses ya cerrados, con su inversión y sus resultados en soles.</p>
-        <div class="kpi-strip history-kpis" id="history-kpis" aria-label="KPIs historicos"></div>
+        <div class="kpi-strip history-kpis" id="history-kpis" aria-label="KPIs históricos"></div>
         <div class="panel history-panel">
           <div class="panel-head">
             <div>
@@ -134,7 +134,7 @@
 
       <section class="view" id="view-reports">
         <h1 class="section-title">Archivo de Reportes</h1>
-        <p class="section-desc">Los reportes de The Little Market guardados en la carpeta compartida de Google Drive, y el generador del reporte semanal de Meta Ads de lunes a domingo, con el formato del ultimo reporte subido.</p>
+        <p class="section-desc">Los reportes de The Little Market guardados en la carpeta compartida de Google Drive, y el generador del reporte semanal de Meta Ads de lunes a domingo, con el formato del último reporte subido.</p>
         <div class="month-tabs reports-tabs" role="tablist" aria-label="Archivo de Reportes">
           <button type="button" class="month-tab reports-tab active" role="tab" id="reports-tab-docs" aria-selected="true" aria-controls="reports-pane-docs" data-reports-tab="docs">Documentos en Drive</button>
           <button type="button" class="month-tab reports-tab" role="tab" id="reports-tab-week" aria-selected="false" aria-controls="reports-pane-week" data-reports-tab="week" tabindex="-1">Generación de Reporte</button>
@@ -165,8 +165,8 @@
               <label class="reports-field" for="reports-sort">
                 <span class="sr-only">Ordenar</span>
                 <select id="reports-sort">
-                  <option value="recent">Mas recientes</option>
-                  <option value="oldest">Mas antiguos</option>
+                  <option value="recent">Más recientes</option>
+                  <option value="oldest">Más antiguos</option>
                   <option value="name">Nombre (A-Z)</option>
                   <option value="size">Peso del archivo</option>
                 </select>
@@ -192,14 +192,14 @@
               <button type="button" class="report-btn" id="week-reset">Restaurar textos</button>
               <button type="button" class="refresh-sheet-btn" id="week-print">Descargar PDF</button>
             </div>
-            <p class="week-toolbar-note">Los textos de analisis y conclusiones vienen propuestos con los numeros de la semana: editalos aqui antes de descargar. Se guardan en este navegador. Al descargar, elige "Guardar como PDF".</p>
+            <p class="week-toolbar-note">Los textos de análisis y conclusiones vienen propuestos con los números de la semana: edítalos aquí antes de descargar. Se guardan en este navegador. Al descargar, elige "Guardar como PDF".</p>
           </div>
           <div id="week-report"></div>
         </div>
       </section>
 
       <section class="view" id="view-log">
-        <h1 class="section-title">Bitácora</h1>
+        <h1 class="section-title">Bitácora · Cambios, comentarios y decisiones</h1>
         <p class="section-desc">Checklist mensual de cambios, comentarios y decisiones. Agrega o edita ítems aquí mismo: se guardan como borrador en este navegador hasta exportar el archivo para publicarlo.</p>
         <div class="panel log-panel">
           <form class="log-form" id="log-form" autocomplete="off">
@@ -249,12 +249,12 @@
     <div class="reports-modal-foot">La vista previa usa el visor de Google Drive. Si no carga, abre el documento en Drive.</div>
   </div>
 </div>
-<script src="js/objectives.js?v=1.4.0"></script>
-<script src="js/projections.js?v=1.0.0"></script>
-<script src="js/bitacora.js?v=1.0.0"></script>
-<script src="js/reports-archive.js?v=1.2.0"></script>
-<script src="js/report-week.js?v=1.2.0"></script>
-<script src="js/navigation.js?v=1.2.0"></script>
+<script src="js/objectives.js?v=1.4.1"></script>
+<script src="js/projections.js?v=1.4.1"></script>
+<script src="js/bitacora.js?v=1.4.1"></script>
+<script src="js/reports-archive.js?v=1.4.1"></script>
+<script src="js/report-week.js?v=1.4.1"></script>
+<script src="js/navigation.js?v=1.4.1"></script>
 <script src="js/sidebar.js?v=1.0.0"></script>
 <script src="auth-login.js?v=1.1.2"></script>
 <script>

@@ -7,14 +7,14 @@
   const GROUP_CLASS = { Ventas: 'sales', Mensajes: 'messages', Reconocimiento: 'branding' };
   const COLORS = { spend: '#2563eb', revenue: '#0d9488', costPerPurchase: '#db2777', costPerConversation: '#0f766e' };
   const CHART_METRICS = {
-    spend: { label: 'Inversion y ventas', money: true, sub: 'Inversion en Meta Ads frente al valor de las compras atribuidas a los anuncios (S/)', series: [['spend', 'Inversion'], ['revenue', 'Valor de compras']] },
+    spend: { label: 'Inversión y ventas', money: true, sub: 'Inversión en Meta Ads frente al valor de las compras atribuidas a los anuncios (S/.)', series: [['spend', 'Inversión'], ['revenue', 'Valor de compras']] },
     purchases: { label: 'Compras', sub: 'Compras en la tienda online atribuidas a los anuncios (pixel de Meta)', series: [['purchases', 'Compras']] },
     conversations: { label: 'Conversaciones', sub: 'Conversaciones de WhatsApp iniciadas desde los anuncios', series: [['conversations', 'Conversaciones']] },
-    clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campanas', series: [['clicks', 'Clics en el enlace']] },
+    clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campañas', series: [['clicks', 'Clics en el enlace']] },
     // Costos por resultado: salen de sumar la inversion y los resultados de su tipo de campana en el mes (los
     // mismos de los KPIs); un mes sin compras o sin conversaciones queda como hueco.
-    costPerPurchase: { label: 'Costo por compra', money: true, cost: true, sub: 'Inversion de la campana de Ventas / compras de cada mes (sin compras, hueco)', series: [['costPerPurchase', 'Costo por compra']] },
-    costPerConversation: { label: 'Costo por conversacion', money: true, cost: true, sub: 'Inversion de la campana de Mensajes / conversaciones de cada mes (sin conversaciones, hueco)', series: [['costPerConversation', 'Costo por conversacion']] },
+    costPerPurchase: { label: 'Costo por compra', money: true, cost: true, sub: 'Inversión de la campaña de Ventas / compras de cada mes (sin compras, hueco)', series: [['costPerPurchase', 'Costo por compra']] },
+    costPerConversation: { label: 'Costo por conversación', money: true, cost: true, sub: 'Inversión de la campaña de Mensajes / conversaciones de cada mes (sin conversaciones, hueco)', series: [['costPerConversation', 'Costo por conversación']] },
   };
   // Grupo de campanas del que sale cada costo por resultado y su resultado.
   const COST_BASES = { costPerPurchase: ['Ventas', 'purchases'], costPerConversation: ['Mensajes', 'conversations'] };
@@ -31,9 +31,11 @@
   // vuelve a leer los datos publicados por la sincronizacion automatica.
   const SYNC_TRIGGER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyoEjOyQ8FfCZLnulkTVO8C2KURxLQfWFZwppLM-EMpcZsQNW0NvN4qq6MOKODxuXTMHA/exec';
   const SYNC_TRIGGER_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/exec$/;
-  const SYNC_SCHEDULE = 'automatica 7:00 a. m., 12:00 m. y 5:00 p. m.';
+  const SYNC_SCHEDULE = 'automática 7:00 a. m., 12:00 m. y 5:00 p. m.';
   const SYNC_POLL_MS = 15000;
   const SYNC_TIMEOUT_MS = 10 * 60 * 1000;
+  // Chart.js en Inter, como Royal Baby (ejes, tooltips y leyendas de los graficos del tablero).
+  if (window.Chart?.defaults?.font) window.Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), syncing: false };
 
   function readPref(key, fallback) {
@@ -48,12 +50,13 @@
   const safeUrl = value => /^https:\/\/(www\.)?facebook\.com\//i.test(String(value || '')) ? esc(value) : '';
   const isNum = value => value != null && value !== '' && Number.isFinite(Number(value));
   const ratio = (value, count) => isNum(value) && Number(count) > 0 ? Number(value) / Number(count) : null;
-  const fmtCount = value => isNum(value) ? Number(value).toLocaleString('es-PE', { maximumFractionDigits: 0 }) : '-';
-  const fmtPct = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { maximumFractionDigits: 1 })}%` : '-';
-  const fmtRoas = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '-';
-  function symbol() { return state.data?.platform?.symbol || 'S/'; }
+  const fmtCount = value => isNum(value) ? Number(value).toLocaleString('es-PE', { maximumFractionDigits: 0 }) : '—';
+  const fmtPct = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { maximumFractionDigits: 1 })}%` : '—';
+  const fmtRoas = value => isNum(value) ? `${Number(value).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '—';
+  // Moneda "S/. " como Royal Baby: los datos de la sincronizacion traen "S/" y se muestra con punto.
+  function symbol() { const value = state.data?.platform?.symbol || 'S/.'; return value === 'S/' ? 'S/.' : value; }
   function fmtMoney(value, digits = 2) {
-    if (!isNum(value)) return '-';
+    if (!isNum(value)) return '—';
     return `${symbol()} ${Number(value).toLocaleString('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
   }
   // Los costos por ThruPlay o por clic pueden ser de centimos: tres decimales para no perderlos.
@@ -110,7 +113,7 @@
   }
   function longDate(iso) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-    return match ? `${Number(match[3])} de ${MONTHS[Number(match[2]) - 1].toLowerCase()}` : '-';
+    return match ? `${Number(match[3])} de ${MONTHS[Number(match[2]) - 1].toLowerCase()}` : '—';
   }
   function groupPill(group) {
     return `<span class="group-pill ${GROUP_CLASS[group] || ''}">${esc(group)}</span>`;
@@ -158,10 +161,10 @@
     const t = yearTotals(period.annual ? period.months : [period]);
     const cutoff = longDate(state.data.cutoff);
     const cards = [
-      ['Inversion Meta Ads', fmtMoney(t.spend), period.annual ? `Acumulado al ${cutoff} | ${t.months} meses con datos` : `${period.period || period.name} | ${period.campaigns.length} campanas`],
+      ['Inversión Meta Ads', fmtMoney(t.spend), period.annual ? `Acumulado al ${cutoff} | ${t.months} meses con datos` : `${period.period || period.name} | ${period.campaigns.length} campañas`],
       ['Valor de compras', fmtMoney(t.revenue), `ROAS ${fmtRoas(ratio(t.revenue, t.spend))} total | ${fmtRoas(ratio(t.sales.revenue, t.sales.spend))} en Ventas`],
       ['Compras', fmtCount(t.purchases), `${fmtMoney(ratio(t.sales.spend, t.sales.purchases))} por compra en Ventas`],
-      ['Conversaciones', fmtCount(t.conversations), `WhatsApp | ${fmtCost(ratio(t.messages.spend, t.messages.conversations))} por conversacion`],
+      ['Conversaciones', fmtCount(t.conversations), `WhatsApp | ${fmtCost(ratio(t.messages.spend, t.messages.conversations))} por conversación`],
       ['Clics en el enlace', fmtCount(t.clicks), `${fmtCost(ratio(t.spend, t.clicks))} por clic | ${fmtCompact(t.landingViews, false)} visitas a la web`],
     ];
     host.innerHTML = cards.map(([name, value, meta]) => `<div class="kpi-pill"><span>${name}</span><strong>${value}</strong><small>${meta}</small></div>`).join('');
@@ -172,14 +175,13 @@
     const panel = document.getElementById('chart-panel');
     const button = document.getElementById('chart-toggle-btn');
     panel.classList.toggle('is-collapsed', state.chartCollapsed);
-    button.textContent = state.chartCollapsed ? '+' : '-';
     button.setAttribute('aria-expanded', String(!state.chartCollapsed));
-    button.setAttribute('title', state.chartCollapsed ? 'Expandir grafico' : 'Minimizar grafico');
+    button.setAttribute('title', state.chartCollapsed ? 'Expandir gráfico' : 'Minimizar gráfico');
   }
   function renderChart() {
     const metric = CHART_METRICS[state.metric] ? state.metric : 'spend';
     const config = CHART_METRICS[metric];
-    document.getElementById('chart-title').textContent = `Evolucion mensual | ${config.label} | 2026`;
+    document.getElementById('chart-title').textContent = `Evolución mensual · ${config.label} · 2026`;
     document.getElementById('chart-sub').textContent = config.sub;
     document.querySelectorAll('#chart-series-toggles .series-toggle').forEach(item => {
       const active = item.dataset.series === metric;
@@ -191,7 +193,7 @@
     if (state.chartCollapsed) return;
     const canvas = document.getElementById('chart-monthly');
     if (!canvas) return;
-    if (typeof Chart === 'undefined') { canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Grafico no disponible sin conexion.</strong><span>Los totales mensuales siguen visibles debajo.</span></div>'; return; }
+    if (typeof Chart === 'undefined') { canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Gráfico no disponible sin conexión.</strong><span>Los totales mensuales siguen visibles debajo.</span></div>'; return; }
     const lastIndex = state.data.months.reduce((last, month, index) => hasData(month) ? index : last, 0);
     const months = state.data.months.slice(0, lastIndex + 1);
     const labels = SHORT_MONTHS.slice(0, lastIndex + 1).map((name, index) => months[index]?.status === 'parcial' ? `${name}*` : name);
@@ -207,10 +209,10 @@
       cubicInterpolationMode: 'monotone',
       spanGaps: false,
     }));
-    const axis = { beginAtZero: true, grace: '15%', border: { display: false }, ticks: { color: '#7890b5', font: { size: 10 } } };
+    const axis = { beginAtZero: true, grace: '15%', border: { display: false }, ticks: { color: '#94A3B8', font: { size: 10 } } };
     const scales = {
-      x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#7890b5', font: { size: 10 } } },
-      y: { ...axis, grid: { color: 'rgba(148,163,184,.20)' }, ticks: { ...axis.ticks, callback: value => (config.cost && Math.abs(value) < 10 ? fmtMoney(value) : fmtCompact(value, config.money)) } },
+      x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#94A3B8', font: { size: 10 } } },
+      y: { ...axis, grid: { color: 'rgba(15,23,42,.06)' }, ticks: { ...axis.ticks, callback: value => (config.cost && Math.abs(value) < 10 ? fmtMoney(value) : fmtCompact(value, config.money)) } },
     };
     if (state.chart) state.chart.destroy();
     state.chart = new Chart(canvas, {
@@ -330,8 +332,8 @@
     const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
     const source = month.annual
       ? `Acumulado de ${month.months.length} meses con datos (${month.months.map(item => SHORT_MONTHS[MONTHS.indexOf(item.name)]).join(', ')})`
-      : month.sheet ? `Hoja "${month.sheet.title}"` : 'Exportacion de Meta Ads';
-    document.getElementById('period-sub').textContent = [source, days, `${month.campaigns.length} campanas`].filter(Boolean).join(' | ');
+      : month.sheet ? `Hoja "${month.sheet.title}"` : 'Exportación de Meta Ads';
+    document.getElementById('period-sub').textContent = [source, days, `${month.campaigns.length} campañas`].filter(Boolean).join(' | ');
     document.getElementById('period-actions').innerHTML = month.annual ? '' : sheetLink(month);
   }
   function summaryCard(month) {
@@ -351,8 +353,8 @@
     return `
       <div class="panel ads-platform-card meta">
         <div class="ads-platform-head">
-          <div><span class="platform-pill meta">${esc(state.data.platform.label)}</span><div class="panel-sub">${esc(state.data.platform.currency)} | ${month.campaigns.length} campanas | ${fmtCount(k.impressions)} impresiones</div></div>
-          <div class="ads-platform-spend"><span>Inversion</span><strong>${fmtMoney(k.spend)}</strong></div>
+          <div><span class="platform-pill meta">${esc(state.data.platform.label)}</span><div class="panel-sub">${esc(state.data.platform.currency)} | ${month.campaigns.length} campañas | ${fmtCount(k.impressions)} impresiones</div></div>
+          <div class="ads-platform-spend"><span>Inversión</span><strong>${fmtMoney(k.spend)}</strong></div>
         </div>
         <div class="ads-platform-metrics cols-2">${metrics.map(([name, value, hint]) => `<div><span>${name}</span><strong>${value}</strong><small>${esc(hint)}</small></div>`).join('')}</div>
         <div class="ads-split"><div class="ads-split-bar">${bar}</div><div class="ads-split-legend">${legend}</div></div>
@@ -362,7 +364,7 @@
   function funnelCard(month) {
     const sales = groupTotals([month], 'Ventas');
     if (!sales.spend) {
-      return '<div class="panel ads-platform-card funnel empty"><div class="ads-platform-head"><span class="platform-pill sales">Embudo de compra</span></div><div class="empty-state"><strong>Sin campana de Ventas</strong><span>Este mes no hubo inversion en la campana de Ventas.</span></div></div>';
+      return '<div class="panel ads-platform-card funnel empty"><div class="ads-platform-head"><span class="platform-pill sales">Embudo de compra</span></div><div class="empty-state"><strong>Sin campaña de Ventas</strong><span>Este mes no hubo inversión en la campaña de Ventas.</span></div></div>';
     }
     const steps = [
       ['Impresiones', sales.impressions],
@@ -382,11 +384,11 @@
     return `
       <div class="panel ads-platform-card funnel">
         <div class="ads-platform-head">
-          <div><span class="platform-pill sales">Embudo de compra</span><div class="panel-sub">Solo la campana de Ventas | conversion de la impresion a la compra</div></div>
+          <div><span class="platform-pill sales">Embudo de compra</span><div class="panel-sub">Solo la campaña de Ventas | conversión de la impresión a la compra</div></div>
           <div class="ads-platform-spend"><span>Costo por compra</span><strong>${fmtMoney(ratio(sales.spend, sales.purchases))}</strong></div>
         </div>
         <div class="funnel-steps">${rows}</div>
-        <div class="funnel-foot">Inversion ${fmtMoney(sales.spend)} | valor de compras ${fmtMoney(sales.revenue)} | ROAS ${fmtRoas(ratio(sales.revenue, sales.spend))}</div>
+        <div class="funnel-foot">Inversión ${fmtMoney(sales.spend)} | valor de compras ${fmtMoney(sales.revenue)} | ROAS ${fmtRoas(ratio(sales.revenue, sales.spend))}</div>
       </div>`;
   }
   function adsDetail(campaign) {
@@ -394,16 +396,16 @@
     if (!ads.length) return '<span class="no-data">Sin detalle por anuncio</span>';
     const cols = AD_COLUMNS[campaign.group] || [['clicks', 'Clics'], ['impressions', 'Impresiones']];
     const cell = (ad, [key, , money]) => money ? fmtMoney(ad[key]) : fmtCount(ad[key]);
-    return `<table class="ads-top-table"><thead><tr><th>Anuncio</th>${cols.map(([, name]) => `<th class="num">${name}</th>`).join('')}<th class="num">Inversion</th><th></th></tr></thead><tbody>${ads.map(ad => `
+    return `<table class="ads-top-table"><thead><tr><th>Anuncio</th>${cols.map(([, name]) => `<th class="num">${name}</th>`).join('')}<th class="num">Inversión</th><th></th></tr></thead><tbody>${ads.map(ad => `
       <tr><td>${esc(ad.name)}</td>${cols.map(col => `<td class="num">${cell(ad, col)}</td>`).join('')}<td class="num">${fmtMoney(ad.spend)}</td><td>${safeUrl(ad.url) ? `<a href="${safeUrl(ad.url)}" target="_blank" rel="noopener">Ver anuncio</a>` : ''}</td></tr>`).join('')}</tbody></table>`;
   }
   function renderCampaigns(month) {
     const rows = month.campaigns.map((campaign, index) => ({ campaign, key: String(index) })).filter(({ campaign }) => state.group === 'all' || campaign.group === state.group);
-    document.getElementById('campaigns-title').textContent = month.annual ? 'Campanas de 2026 (acumulado)' : `Campanas de ${month.name} 2026`;
-    document.getElementById('campaigns-sub').textContent = `${month.campaigns.length} campanas con inversion. Despliega cada fila para ver los mejores anuncios.`;
+    document.getElementById('campaigns-title').textContent = month.annual ? 'Campañas de 2026 (acumulado)' : `Campañas de ${month.name} 2026`;
+    document.getElementById('campaigns-sub').textContent = `${month.campaigns.length} campañas con inversión. Despliega cada fila para ver los mejores anuncios.`;
     document.querySelectorAll('#campaigns-filter .series-toggle').forEach(item => item.classList.toggle('active', item.dataset.series === state.group));
     const body = document.getElementById('campaigns-body');
-    if (!rows.length) { body.innerHTML = '<tr><td colspan="13" class="table-empty">Sin campanas de este tipo en el mes.</td></tr>'; return; }
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="13" class="table-empty">Sin campañas de este tipo en el mes.</td></tr>'; return; }
     body.innerHTML = rows.map(({ campaign, key }) => {
       const result = mainResult(campaign);
       const open = state.open.has(key);
@@ -419,10 +421,10 @@
           <td class="num">${fmtMoney(campaign.cpm)}</td>
           <td class="num">${fmtCount(campaign.clicks)}</td>
           <td class="num">${fmtCost(campaign.cpc)}</td>
-          <td class="num">${campaign.purchases ? fmtCount(campaign.purchases) : '-'}</td>
-          <td class="num">${campaign.revenue ? fmtMoney(campaign.revenue) : '-'}</td>
-          <td class="num">${campaign.revenue ? fmtRoas(ratio(campaign.revenue, campaign.spend)) : '-'}</td>
-          <td>${hasAds ? `<button type="button" class="ads-expand" data-key="${key}" aria-expanded="${open}">${open ? 'Ocultar' : `Ver ${campaign.topAds.length}`}</button>` : '<span class="no-data">-</span>'}</td>
+          <td class="num">${campaign.purchases ? fmtCount(campaign.purchases) : '—'}</td>
+          <td class="num">${campaign.revenue ? fmtMoney(campaign.revenue) : '—'}</td>
+          <td class="num">${campaign.revenue ? fmtRoas(ratio(campaign.revenue, campaign.spend)) : '—'}</td>
+          <td>${hasAds ? `<button type="button" class="ads-expand" data-key="${key}" aria-expanded="${open}">${open ? 'Ocultar' : `Ver ${campaign.topAds.length}`}</button>` : '<span class="no-data">—</span>'}</td>
         </tr>
         ${open ? `<tr class="ads-detail-row"><td colspan="13">${adsDetail(campaign)}</td></tr>` : ''}`;
     }).join('');
@@ -466,10 +468,10 @@
         <td class="num">${fmtMoney(campaign.spend)}</td>
         <td class="num">${fmtCount(result.value)} <small class="result-label">${result.label}</small></td>
         <td class="num">${fmtCount(campaign.clicks)}</td>
-        <td class="num">${campaign.purchases ? fmtCount(campaign.purchases) : '-'}</td>
-        <td class="num">${campaign.revenue ? fmtMoney(campaign.revenue) : '-'}</td>
-        <td>${ads.length ? ads.map(ad => safeUrl(ad.url) ? `<a class="history-ad-link" href="${safeUrl(ad.url)}" target="_blank" rel="noopener">${esc(ad.name)}</a>` : `<span class="history-ad-muted">${esc(ad.name)}</span>`).join('') : '-'}</td>
-        <td class="date-col">${esc(month.period || '-')}</td>
+        <td class="num">${campaign.purchases ? fmtCount(campaign.purchases) : '—'}</td>
+        <td class="num">${campaign.revenue ? fmtMoney(campaign.revenue) : '—'}</td>
+        <td>${ads.length ? ads.map(ad => safeUrl(ad.url) ? `<a class="history-ad-link" href="${safeUrl(ad.url)}" target="_blank" rel="noopener">${esc(ad.name)}</a>` : `<span class="history-ad-muted">${esc(ad.name)}</span>`).join('') : '—'}</td>
+        <td class="date-col">${esc(month.period || '—')}</td>
       </tr>`;
     }).join('');
   }
@@ -485,7 +487,7 @@
     const date = stamp ? new Date(stamp.length === 10 ? `${stamp}T12:00:00` : stamp) : null;
     if (!date || Number.isNaN(date.getTime())) return '';
     const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()].toLowerCase()}`;
-    return stamp.length === 10 ? `Ultima sincronizacion: ${day}` : `Ultima sincronizacion: ${day}, ${date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+    return stamp.length === 10 ? `Última sincronización: ${day}` : `Última sincronización: ${day}, ${date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
   }
   function setSyncStatus(text, busy = false) {
     const button = document.getElementById('ads-sync-btn');
@@ -494,7 +496,7 @@
     if (!button) return;
     button.disabled = busy;
     button.textContent = busy ? 'Actualizando...' : 'Actualizar';
-    button.title = syncEndpoint() ? 'Lee otra vez la carpeta de Drive y actualiza el tablero' : 'Vuelve a cargar los ultimos datos publicados';
+    button.title = syncEndpoint() ? 'Lee otra vez la carpeta de Drive y actualiza el tablero' : 'Vuelve a cargar los últimos datos publicados';
   }
   // Proxima corrida automatica del workflow (7:00, 12:00 y 17:00 de Lima; GitHub puede demorarla unos minutos).
   function nextAutoSync() {
@@ -502,16 +504,16 @@
     const hour = lima.getUTCHours() + lima.getUTCMinutes() / 60;
     const next = [7, 12, 17].find(value => value > hour);
     const label = value => value === 12 ? '12:00 m.' : `${value > 12 ? value - 12 : value}:00 ${value < 12 ? 'a. m.' : 'p. m.'}`;
-    return next ? `Hoy, ${label(next)}` : `Manana, ${label(7)}`;
+    return next ? `Hoy, ${label(next)}` : `Mañana, ${label(7)}`;
   }
   function renderStatus() {
     const set = (id, text) => { const node = document.getElementById(id); if (node) node.textContent = text; };
     const cutoff = /^(\d{4})-(\d{2})-(\d{2})$/.exec(state.data.cutoff || '');
     const last = [...state.data.months].reverse().find(hasData);
-    set('status-data', cutoff ? `Meta Ads al ${Number(cutoff[3])} de ${MONTHS[Number(cutoff[2]) - 1].toLowerCase()}` : '-');
-    set('status-last', syncLabel(state.data).replace('Ultima sincronizacion: ', '') || '-');
+    set('status-data', cutoff ? `Meta Ads al ${Number(cutoff[3])} de ${MONTHS[Number(cutoff[2]) - 1].toLowerCase()}` : '—');
+    set('status-last', syncLabel(state.data).replace('Última sincronización: ', '') || '—');
     set('status-next', nextAutoSync());
-    set('status-file', last?.sheet?.title || '-');
+    set('status-file', last?.sheet?.title || '—');
   }
   function wireStatusCard() {
     const button = document.getElementById('data-status-btn');
@@ -565,16 +567,16 @@
         const data = await fetchPublishedData().catch(() => null);
         if (data && syncStamp(data) !== before) applyData(data);
         setSyncStatus(data
-          ? `${syncStamp(data) !== before ? 'Datos actualizados.' : 'Ya tienes los ultimos datos publicados.'} Sincronizacion ${SYNC_SCHEDULE}`
+          ? `${syncStamp(data) !== before ? 'Datos actualizados.' : 'Ya tienes los últimos datos publicados.'} Sincronización ${SYNC_SCHEDULE}`
           : 'No se pudieron leer los datos. Intenta en unos minutos.');
         return;
       }
       setSyncStatus('Leyendo la carpeta de Drive. El tablero se actualiza solo al terminar (2 a 4 minutos).', true);
       try {
         const result = await requestSync(endpoint);
-        if (result.pending) setSyncStatus('Ya hay una sincronizacion en curso. El tablero se actualiza solo al terminar.', true);
+        if (result.pending) setSyncStatus('Ya hay una sincronización en curso. El tablero se actualiza solo al terminar.', true);
       } catch (error) {
-        setSyncStatus(`No se pudo iniciar la sincronizacion (${error.message}). ${syncLabel(state.data)}`);
+        setSyncStatus(`No se pudo iniciar la sincronización (${error.message}). ${syncLabel(state.data)}`);
         return;
       }
       const started = Date.now();
@@ -587,7 +589,7 @@
           return;
         }
       }
-      setSyncStatus('Aun no llegan datos nuevos. Recarga la pagina en unos minutos.');
+      setSyncStatus('Aún no llegan datos nuevos. Recarga la página en unos minutos.');
     } finally {
       state.syncing = false;
       const button = document.getElementById('ads-sync-btn');
@@ -663,7 +665,7 @@
       renderAll();
       setSyncStatus('');
     } catch (error) {
-      document.getElementById('view-obj').innerHTML = '<div class="data-notice error"><strong>No se pudo cargar la informacion de The Little Market.</strong></div>';
+      document.getElementById('view-obj').innerHTML = '<div class="data-notice error"><strong>No se pudo cargar la información de The Little Market.</strong></div>';
       console.error(error);
     }
   }

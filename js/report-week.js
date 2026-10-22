@@ -19,25 +19,25 @@
   const GROUPS = {
     Ventas: {
       key: 'Ventas', label: 'Ventas E-Commerce', short: 'E-Commerce (Ventas)', color: '#2a8276', field: 'purchases', one: 'compra', many: 'compras', unit: 'compras',
-      kpis: [['spend', 'Inversion'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['addToCart', 'Anadidos carrito']],
-      summary: [['spend', 'Inversion'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['reach', 'Alcance']],
+      kpis: [['spend', 'Inversión'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['addToCart', 'Añadidos carrito']],
+      summary: [['spend', 'Inversión'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['reach', 'Alcance']],
       adCols: [['purchases', 'Compras'], ['addToCart', 'Carrito'], ['spend', 'Gasto']], topTitle: 'Top anuncios por ventas',
     },
     Mensajes: {
-      key: 'Mensajes', label: 'Mensajes & Trafico al Perfil', short: 'Mensajes & Trafico', color: '#16a34a', field: 'conversations', one: 'mensaje', many: 'mensajes', unit: 'msg',
-      kpis: [['spend', 'Inversion'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
-      summary: [['spend', 'Inversion'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
+      key: 'Mensajes', label: 'Mensajes & Tráfico al Perfil', short: 'Mensajes & Tráfico', color: '#16a34a', field: 'conversations', one: 'mensaje', many: 'mensajes', unit: 'msg',
+      kpis: [['spend', 'Inversión'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
+      summary: [['spend', 'Inversión'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
       adCols: [['conversations', 'Mensajes'], ['clicks', 'Clics'], ['spend', 'Gasto']], topTitle: 'Top anuncios por mensajes',
     },
     Reconocimiento: {
-      key: 'Reconocimiento', label: 'Reconocimiento', short: 'Reconocimiento', color: '#7c3aed', field: 'thruplays', one: 'reproduccion', many: 'reproducciones', unit: 'repr.',
-      kpis: [['spend', 'Inversion'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
-      summary: [['spend', 'Inversion'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
+      key: 'Reconocimiento', label: 'Reconocimiento', short: 'Reconocimiento', color: '#7c3aed', field: 'thruplays', one: 'reproducción', many: 'reproducciones', unit: 'repr.',
+      kpis: [['spend', 'Inversión'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
+      summary: [['spend', 'Inversión'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
       adCols: [['thruplays', 'Reproduc.'], ['spend', 'Gasto']], topTitle: 'Top anuncios por reproducciones',
     },
   };
   const ORDER = ['Ventas', 'Mensajes', 'Reconocimiento'];
-  const OTHER = { key: 'Otros', label: 'Otras campanas', short: 'Otras campanas', color: '#64748b', field: 'clicks', one: 'clic', many: 'clics', unit: 'clics', kpis: [], summary: [], adCols: [['clicks', 'Clics'], ['spend', 'Gasto']], topTitle: 'Top anuncios' };
+  const OTHER = { key: 'Otros', label: 'Otras campañas', short: 'Otras campañas', color: '#64748b', field: 'clicks', one: 'clic', many: 'clics', unit: 'clics', kpis: [], summary: [], adCols: [['clicks', 'Clics'], ['spend', 'Gasto']], topTitle: 'Top anuncios' };
   const FIELDS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue', 'conversations', 'thruplays', 'profileVisits'];
 
   let data = null;
@@ -50,11 +50,11 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const safeUrl = value => /^https:\/\/(www\.)?facebook\.com\//i.test(String(value || '')) ? String(value) : '';
   const isNum = value => value != null && Number.isFinite(value);
-  const money = (value, digits = 2) => isNum(value) ? `S/ ${value.toLocaleString('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits })}` : '-';
-  const count = value => isNum(value) ? Math.round(value).toLocaleString('es-PE') : '-';
-  const unitCost = value => isNum(value) ? money(value, value < 0.1 ? 3 : 2) : '-';
-  const roasFmt = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '-';
-  const pct = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '-';
+  const money = (value, digits = 2) => isNum(value) ? `S/. ${value.toLocaleString('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits })}` : '—';
+  const count = value => isNum(value) ? Math.round(value).toLocaleString('es-PE') : '—';
+  const unitCost = value => isNum(value) ? money(value, value < 0.1 ? 3 : 2) : '—';
+  const roasFmt = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '—';
+  const pct = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—';
   const ratio = (value, base) => base > 0 ? value / base : null;
   const plural = (value, group) => Math.round(value) === 1 ? group.one : group.many;
 
@@ -204,19 +204,19 @@
     const { group, now, ads } = x;
     const best = ads[0];
     if (!x.active) return `Sin entrega esta semana.`;
-    if (!best || !best.results) return `${count(now.results)} ${plural(now.results, group)} con ${money(now.spend)} de inversion.`;
+    if (!best || !best.results) return `${count(now.results)} ${plural(now.results, group)} con ${money(now.spend)} de inversión.`;
     const share = now.results > 0 ? Math.round(best.results / now.results * 100) : 0;
     const extra = group.key === 'Ventas' && best.roas ? ` (ROAS ${roasFmt(best.roas)})` : group.key !== 'Ventas' && best.cost != null ? ` a ${unitCost(best.cost)} por ${group.one}` : '';
-    return `"${best.name}" concentro ${count(best.results)} de ${count(now.results)} ${group.many} (${share}%)${extra}.`;
+    return `"${best.name}" concentró ${count(best.results)} de ${count(now.results)} ${group.many} (${share}%)${extra}.`;
   }
   function analysis(x) {
     const { group, now, before } = x;
     if (!x.active) return 'El grupo no tuvo entrega esta semana.';
-    const parts = [`${group.label}: ${trend(now.results, before.results, group)}, con ${money(now.spend)} de inversion`];
+    const parts = [`${group.label}: ${trend(now.results, before.results, group)}, con ${money(now.spend)} de inversión`];
     if (now.cost != null) parts.push(`costo por ${group.one} ${unitCost(now.cost)}${before.cost != null ? ` (antes ${unitCost(before.cost)})` : ''}`);
     if (group.key === 'Ventas') {
       if (now.revenue > 0) parts.push(`ROAS ${roasFmt(now.roas)}`);
-      if (now.addToCart > now.purchases * 5 && now.addToCart > 0) parts.push(`${count(now.addToCart)} anadidos al carrito frente a ${count(now.purchases)} ${plural(now.purchases, group)}: hay interes de compra que todavia no se cierra`);
+      if (now.addToCart > now.purchases * 5 && now.addToCart > 0) parts.push(`${count(now.addToCart)} añadidos al carrito frente a ${count(now.purchases)} ${plural(now.purchases, group)}: hay interés de compra que todavía no se cierra`);
     }
     return `${parts.join(', ')}.`;
   }
@@ -225,18 +225,18 @@
     const active = r.groups.filter(x => x.active);
     const top = [...active].sort((a, b) => b.now.spend - a.now.spend)[0];
     const segs = [r.segments.messages && `las conversaciones vienen sobre todo de ${r.segments.messages.label}`, r.segments.buyers && `las compras se concentran en ${r.segments.buyers.label}`].filter(Boolean);
-    notes.estrategia = `Semana ${rangeLabel(r.monday)}: ${money(r.total.spend)} de inversion en Meta Ads repartidos en ${active.map(x => x.group.short.toLowerCase()).join(', ') || 'ningun grupo'}.${segs.length ? ` En el publico, ${segs.join(' y ')}.` : ''}`;
-    notes.distribucion = top ? `${top.group.short} se llevo la mayor parte de la inversion (${pct(top.now.spend / r.total.spend * 100)}). ${active.map(x => `${x.group.short}: ${trend(x.now.results, x.before.results, x.group)}`).join('. ')}.` : '';
+    notes.estrategia = `Semana ${rangeLabel(r.monday)}: ${money(r.total.spend)} de inversión en Meta Ads repartidos en ${active.map(x => x.group.short.toLowerCase()).join(', ') || 'ningún grupo'}.${segs.length ? ` En el publico, ${segs.join(' y ')}.` : ''}`;
+    notes.distribucion = top ? `${top.group.short} se llevó la mayor parte de la inversión (${pct(top.now.spend / r.total.spend * 100)}). ${active.map(x => `${x.group.short}: ${trend(x.now.results, x.before.results, x.group)}`).join('. ')}.` : '';
     active.slice(0, 3).forEach((x, i) => {
       const best = x.ads[0];
       notes[`c${i + 1}`] = best && best.results
-        ? `${x.group.label}: "${best.name}" lidero con ${count(best.results)} ${plural(best.results, x.group)}${x.group.key === 'Ventas' && best.roas ? ` (ROAS ${roasFmt(best.roas)})` : ''}. ${x.now.results >= x.before.results ? 'Mantener esta linea creativa la proxima semana.' : `El grupo bajo frente a la semana anterior (${count(x.before.results)}): mantener la pieza que mejor rinde y probar variantes.`}`
-        : `${x.group.label}: sin ${x.group.many} con ${money(x.now.spend)} de inversion${x.group.key === 'Ventas' && x.now.addToCart ? ` y ${count(x.now.addToCart)} anadidos al carrito` : ''}. ${x.group.key === 'Ventas' ? 'Revisar ofertas, anuncios y el paso de pago.' : 'Revisar los anuncios del grupo.'}`;
+        ? `${x.group.label}: "${best.name}" lideró con ${count(best.results)} ${plural(best.results, x.group)}${x.group.key === 'Ventas' && best.roas ? ` (ROAS ${roasFmt(best.roas)})` : ''}. ${x.now.results >= x.before.results ? 'Mantener esta línea creativa la próxima semana.' : `El grupo bajó frente a la semana anterior (${count(x.before.results)}): mantener la pieza que mejor rinde y probar variantes.`}`
+        : `${x.group.label}: sin ${x.group.many} con ${money(x.now.spend)} de inversión${x.group.key === 'Ventas' && x.now.addToCart ? ` y ${count(x.now.addToCart)} añadidos al carrito` : ''}. ${x.group.key === 'Ventas' ? 'Revisar ofertas, anuncios y el paso de pago.' : 'Revisar los anuncios del grupo.'}`;
     });
     active.forEach(x => { notes[`analisis-${x.group.key}`] = analysis(x); });
     return notes;
   }
-  const NOTE_TITLES = { c1: 'Conclusion 1', c2: 'Conclusion 2', c3: 'Conclusion 3' };
+  const NOTE_TITLES = { c1: 'Conclusión 1', c2: 'Conclusión 2', c3: 'Conclusión 3' };
 
   function readNotes() {
     try {
@@ -283,22 +283,22 @@
   const slideFoot = r => `<div class="week-slide-foot"><span>LIMA RETAIL | DATA DRIVEN MARKETING | POWER KPI | DIGITAL ANALYTICS</span><span>Reporte Ads - ${esc(BRAND)}: ${esc(rangeLabel(r.monday))}</span></div>`;
   function adsTable(x) {
     const { group, ads } = x;
-    if (!ads.length) return '<div class="week-empty">Sin anuncios con inversion esta semana.</div>';
+    if (!ads.length) return '<div class="week-empty">Sin anuncios con inversión esta semana.</div>';
     return `<table class="data-table week-table"><thead><tr><th>Anuncio</th>${group.adCols.map(([, label]) => `<th class="num">${esc(label)}</th>`).join('')}<th>Vista</th></tr></thead><tbody>${ads.map(ad => `
-      <tr><td class="week-ad-name">${esc(ad.name)}</td>${group.adCols.map(([key]) => `<td class="num">${key === 'spend' ? money(ad.spend) : count(ad[key])}</td>`).join('')}<td>${ad.url ? `<a href="${esc(ad.url)}" target="_blank" rel="noopener">Ver &raquo;</a>` : '-'}</td></tr>`).join('')}</tbody></table>`;
+      <tr><td class="week-ad-name">${esc(ad.name)}</td>${group.adCols.map(([key]) => `<td class="num">${key === 'spend' ? money(ad.spend) : count(ad[key])}</td>`).join('')}<td>${ad.url ? `<a href="${esc(ad.url)}" target="_blank" rel="noopener">Ver &raquo;</a>` : '—'}</td></tr>`).join('')}</tbody></table>`;
   }
   function sideTable(x, r) {
     const { group, now } = x;
     if (group.key === 'Ventas') {
-      const stages = [['Clics al enlace', now.clicks], ['Visitas a la web', now.landingViews], ['Anadidos al carrito', now.addToCart], ['Pagos iniciados', now.checkouts], ['Compras', now.purchases]];
+      const stages = [['Clics al enlace', now.clicks], ['Visitas a la web', now.landingViews], ['Añadidos al carrito', now.addToCart], ['Pagos iniciados', now.checkouts], ['Compras', now.purchases]];
       return `<div class="week-sub-title">Embudo E-Commerce</div><table class="data-table week-table"><thead><tr><th>Etapa</th><th class="num">Cantidad</th></tr></thead><tbody>${stages.map(([label, value]) => `<tr><td>${label}</td><td class="num">${count(value)}</td></tr>`).join('')}</tbody></table>`;
     }
     if (group.key === 'Mensajes') {
-      const rows = [['Mas mensajes', r.segments.messages], ['Compradoras', r.segments.buyers], ['Mayor inversion', r.segments.spend]].filter(([, seg]) => seg);
-      return `<div class="week-sub-title">Segmentacion</div><table class="data-table week-table"><thead><tr><th>Dato</th><th>Detalle</th></tr></thead><tbody>${rows.length ? rows.map(([label, seg]) => `<tr><td>${label}</td><td>${esc(seg.label)}</td></tr>`).join('') : '<tr><td colspan="2" class="table-empty">Sin datos de edad y sexo</td></tr>'}</tbody></table>`;
+      const rows = [['Más mensajes', r.segments.messages], ['Compradoras', r.segments.buyers], ['Mayor inversión', r.segments.spend]].filter(([, seg]) => seg);
+      return `<div class="week-sub-title">Segmentación</div><table class="data-table week-table"><thead><tr><th>Dato</th><th>Detalle</th></tr></thead><tbody>${rows.length ? rows.map(([label, seg]) => `<tr><td>${label}</td><td>${esc(seg.label)}</td></tr>`).join('') : '<tr><td colspan="2" class="table-empty">Sin datos de edad y sexo</td></tr>'}</tbody></table>`;
     }
     if (group.key === 'Reconocimiento') {
-      const rows = [['Impresiones', count(now.impressions)], ['Alcance (suma diaria)', count(now.reach)], ['Mas reproducciones', r.segments.thruplays ? esc(r.segments.thruplays.label) : '-'], ['Costo por clic', unitCost(now.cpc)]];
+      const rows = [['Impresiones', count(now.impressions)], ['Alcance (suma diaria)', count(now.reach)], ['Más reproducciones', r.segments.thruplays ? esc(r.segments.thruplays.label) : '—'], ['Costo por clic', unitCost(now.cpc)]];
       return `<div class="week-sub-title">Alcance de marca</div><table class="data-table week-table"><thead><tr><th>Dato</th><th class="num">Detalle</th></tr></thead><tbody>${rows.map(([label, value]) => `<tr><td>${label}</td><td class="num">${value}</td></tr>`).join('')}</tbody></table>`;
     }
     return '';
@@ -314,14 +314,14 @@
           <div>${sideTable(x, r)}</div>
         </div>
         <div class="week-callout"><b>Destacado:</b> ${esc(highlight(x))}</div>
-        <div class="week-analysis"><div class="week-sub-title">Analisis</div>${editable(`analisis-${group.key}`, notes[`analisis-${group.key}`] ?? '')}</div>
+        <div class="week-analysis"><div class="week-sub-title">Análisis</div>${editable(`analisis-${group.key}`, notes[`analisis-${group.key}`] ?? '')}</div>
         ${slideFoot(r)}
       </section>`;
   }
   function highlightTitle(x) {
     if (!x.active) return 'Sin entrega esta semana';
     const best = x.ads[0];
-    return best && best.results ? `"${best.name}" es el anuncio que mas ${x.group.many} trajo` : `${count(x.now.results)} ${plural(x.now.results, x.group)} en la semana`;
+    return best && best.results ? `"${best.name}" es el anuncio que más ${x.group.many} trajo` : `${count(x.now.results)} ${plural(x.now.results, x.group)} en la semana`;
   }
 
   function render() {
@@ -331,11 +331,11 @@
     const list = weeks(data.rows);
     if (!list.length) {
       if (select) select.innerHTML = '<option value="">Sin semanas cerradas</option>';
-      host.innerHTML = '<div class="panel"><div class="week-empty">Todavia no hay una semana cerrada de lunes a domingo con entregas en Meta Ads.</div></div>';
+      host.innerHTML = '<div class="panel"><div class="week-empty">Todavía no hay una semana cerrada de lunes a domingo con entregas en Meta Ads.</div></div>';
       return;
     }
     if (!list.includes(selected)) selected = list[0];
-    if (select) select.innerHTML = list.map((monday, i) => `<option value="${monday}"${monday === selected ? ' selected' : ''}>${esc(rangeLabel(monday))}${i === 0 ? ' | ultima semana cerrada' : ''}</option>`).join('');
+    if (select) select.innerHTML = list.map((monday, i) => `<option value="${monday}"${monday === selected ? ' selected' : ''}>${esc(rangeLabel(monday))}${i === 0 ? ' | última semana cerrada' : ''}</option>`).join('');
 
     const r = buildReport(selected);
     const saved = readNotes()[selected] || {};
@@ -345,7 +345,7 @@
     charts = [];
 
     host.innerHTML = `
-      ${r.missing.length ? `<div class="data-notice warn week-warn">La descarga de Meta llega hasta el ${esc(dayLabel(data.lastDay))}: faltan ${esc(r.missing.map(dayLabel).join(', '))}, asi que los totales pueden subir. Sincroniza con Drive cuando el equipo suba la descarga completa.</div>` : ''}
+      ${r.missing.length ? `<div class="data-notice warn week-warn">La descarga de Meta llega hasta el ${esc(dayLabel(data.lastDay))}: faltan ${esc(r.missing.map(dayLabel).join(', '))}, así que los totales pueden subir. Sincroniza con Drive cuando el equipo suba la descarga completa.</div>` : ''}
       <div class="week-doc" id="week-doc">
         <section class="week-slide week-cover">
           <div class="week-cover-mark">M</div>
@@ -356,7 +356,7 @@
         </section>
 
         <section class="week-slide">
-          ${slideHead('Resumen Ejecutivo', `${rangeLabel(r.monday)} | Inversion total: ${money(r.total.spend)} | Meta Ads: ${active.map(x => x.group.key).join(' - ') || 'sin entrega'}`)}
+          ${slideHead('Resumen Ejecutivo', `${rangeLabel(r.monday)} | Inversión total: ${money(r.total.spend)} | Meta Ads: ${active.map(x => x.group.key).join(' - ') || 'sin entrega'}`)}
           <div class="week-summary">${r.groups.filter(x => GROUPS[x.group.key]).map(x => `
             <div class="week-summary-row" style="--gc:${x.group.color}">
               <div class="week-summary-name">${esc(x.group.label)}${x.active ? '' : ' <small>(sin entrega esta semana)</small>'}</div>
@@ -368,9 +368,9 @@
         </section>
 
         <section class="week-slide">
-          ${slideHead('Distribucion de Inversion', 'Como se repartio la inversion entre los objetivos')}
+          ${slideHead('Distribución de Inversión', 'Cómo se repartió la inversión entre los objetivos')}
           <div class="week-cols">
-            <div class="week-donut"><canvas id="week-donut" role="img" aria-label="Distribucion de la inversion por objetivo"></canvas></div>
+            <div class="week-donut"><canvas id="week-donut" role="img" aria-label="Distribución de la inversión por objetivo"></canvas></div>
             <div>
               <div class="week-sub-title">Resumen por objetivo</div>
               <table class="data-table week-table"><thead><tr><th>Objetivo</th><th class="num">Gasto</th><th class="num">%</th><th class="num">Result.</th><th class="num">Sem. anterior</th></tr></thead><tbody>
@@ -379,7 +379,7 @@
               </tbody></table>
             </div>
           </div>
-          <div class="week-analysis"><div class="week-sub-title">Analisis</div>${editable('distribucion', notes.distribucion)}</div>
+          <div class="week-analysis"><div class="week-sub-title">Análisis</div>${editable('distribucion', notes.distribucion)}</div>
           ${slideFoot(r)}
         </section>
 
@@ -444,8 +444,8 @@
     if (!host) return;
     const model = await global.ReportsArchive?.latestReport?.();
     host.innerHTML = model
-      ? `Modelo: <a href="${esc(model.viewUrl)}" target="_blank" rel="noopener">${esc(model.title)}</a> (ultimo reporte subido a la carpeta)`
-      : 'Modelo: el ultimo reporte de la carpeta de reportes de Drive';
+      ? `Modelo: <a href="${esc(model.viewUrl)}" target="_blank" rel="noopener">${esc(model.title)}</a> (último reporte subido a la carpeta)`
+      : 'Modelo: el último reporte de la carpeta de reportes de Drive';
   }
 
   async function init() {
@@ -455,19 +455,19 @@
       document.getElementById('week-select')?.addEventListener('change', event => { selected = event.target.value; render(); });
       document.getElementById('week-print')?.addEventListener('click', printReport);
       document.getElementById('week-reset')?.addEventListener('click', () => {
-        if (selected && global.confirm('Se descartan los textos editados de esta semana y vuelven los propuestos. Continuar?')) { resetNotes(selected); render(); }
+        if (selected && global.confirm('Se descartan los textos editados de esta semana y vuelven los propuestos. ¿Continuar?')) { resetNotes(selected); render(); }
       });
       // Una sincronizacion con Drive trae datos nuevos: se vuelven a leer al abrir otra vez el generador.
       global.addEventListener('tlm:data-updated', () => { data = null; });
     }
     renderModel();
     if (data) { render(); return; }
-    if (host) host.innerHTML = '<div class="panel"><div class="week-empty">Cargando los datos por dia...</div></div>';
+    if (host) host.innerHTML = '<div class="panel"><div class="week-empty">Cargando los datos por día...</div></div>';
     try {
       await load();
       render();
     } catch (error) {
-      if (host) host.innerHTML = `<div class="panel"><div class="week-empty">No se pudieron cargar los datos por dia (${esc(error.message)}).</div></div>`;
+      if (host) host.innerHTML = `<div class="panel"><div class="week-empty">No se pudieron cargar los datos por día (${esc(error.message)}).</div></div>`;
     }
   }
 
