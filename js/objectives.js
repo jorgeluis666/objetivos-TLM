@@ -2,6 +2,8 @@
   // Datos generados por scripts/build-ads-data.py desde las exportaciones mensuales de Meta Ads en Drive.
   // En el build llegan incrustados como window.TLM_ADS_DATA.
   const DATA_URL = 'data/tlm-ads-2026.json';
+  // Informe por dia (filas por dia, campana y anuncio) del mismo script: da el tramo real del mes anterior.
+  const DAILY_URL = 'data/tlm-ads-daily.json';
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const SHORT_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const GROUP_CLASS = { Ventas: 'sales', Mensajes: 'messages', Reconocimiento: 'branding' };
@@ -34,9 +36,20 @@
   const SYNC_SCHEDULE = 'automática 7:00 a. m., 12:00 m. y 5:00 p. m.';
   const SYNC_POLL_MS = 15000;
   const SYNC_TIMEOUT_MS = 10 * 60 * 1000;
+  // La sincronizacion corre tres veces al dia: mas de un dia sin datos nuevos pone la pildora en aviso.
+  const STALE_MS = 26 * 3600000;
+  // Indicadores de Gasto con variacion contra el mes anterior: la inversion es neutra; en los demas, subir es bueno.
+  const KPI_DEFS = [
+    { key: 'spend', label: 'Inversión Meta Ads', name: 'inversión', money: true, better: null },
+    { key: 'revenue', label: 'Valor de compras', name: 'valor de compras', money: true, better: 'up' },
+    { key: 'purchases', label: 'Compras', name: 'compras', better: 'up' },
+    { key: 'conversations', label: 'Conversaciones', name: 'conversaciones', better: 'up' },
+    { key: 'clicks', label: 'Clics en el enlace', name: 'clics', better: 'up' },
+  ];
+  const COMPARE_KEYS = KPI_DEFS.map(kpi => kpi.key);
   // Chart.js en Inter, como Royal Baby (ejes, tooltips y leyendas de los graficos del tablero).
   if (window.Chart?.defaults?.font) window.Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), syncing: false };
+  const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), syncing: false, syncError: false, loadError: false, daily: null };
 
   function readPref(key, fallback) {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -135,13 +148,100 @@
     return { value: campaign.clicks, label: 'clics' };
   }
 
+  // ── Comparacion con el mes anterior (mismo criterio que Royal Baby y Tierra Films) ──
+  const pad = value => String(value).padStart(2, '0');
+  const daysIn = (year, index) => new Date(Date.UTC(year, index + 1, 0)).getUTCDate();
+  const dayOf = iso => Number(String(iso || '').slice(8, 10)) || null;
+  const rangeText = (index, from, to) => `${from === to ? to : `${from}-${to}`} ${MONTHS[index]}`;
+  const listText = items => (items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}` : items.join(''));
+  const KPI_NAMES = Object.fromEntries(KPI_DEFS.map(kpi => [kpi.key, kpi.name]));
+
+  // Informe por dia sumado por fecha: Map "2026-09-01" -> { spend, revenue, purchases, conversations, clicks }.
+  // Sus filas traen d = dias desde firstDay. Sin informe (o con otro formato) queda null y se prorratea.
+  function dailyTotals(daily) {
+    const columns = Array.isArray(daily?.columns) ? daily.columns : [];
+    const start = Date.parse(`${daily?.firstDay}T00:00:00Z`);
+    const dayCol = columns.indexOf('d');
+    if (!Array.isArray(daily?.rows) || dayCol < 0 || !Number.isFinite(start)) return null;
+    const cols = COMPARE_KEYS.map(key => [key, columns.indexOf(key)]).filter(([, index]) => index >= 0);
+    const byDay = new Map();
+    daily.rows.forEach(row => {
+      if (!Number.isFinite(Number(row[dayCol]))) return;
+      const day = new Date(start + Number(row[dayCol]) * 86400000).toISOString().slice(0, 10);
+      const totals = byDay.get(day) || {};
+      cols.forEach(([key, index]) => { totals[key] = (totals[key] || 0) + Number(row[index] || 0); });
+      byDay.set(day, totals);
+    });
+    return byDay;
+  }
+  // Periodo de un mes: completo si esta cerrado; en curso, del 1 al ultimo dia con datos ("1-18 Octubre").
+  function periodOf(data, byDay, month) {
+    const index = MONTHS.indexOf(month.name);
+    const closed = month.status !== 'parcial';
+    const to = closed ? daysIn(data.year, index) : dayOf(month.lastDay) || daysIn(data.year, index);
+    return { index, closed, to, label: rangeText(index, 1, to), compare: compareOf(data, byDay, index, closed, to) };
+  }
+  // Un mes cerrado se compara contra el mes anterior completo. Un mes en curso, contra el mismo tramo del mes
+  // anterior: cada suma sale del informe por dia cuando ese informe cubre el mes anterior y, si no, del mes
+  // anterior prorrateado a los mismos dias. Sin mes anterior con datos, null.
+  function compareOf(data, byDay, index, closed, to) {
+    const previous = index > 0 ? data.months.find(item => item.name === MONTHS[index - 1]) : null;
+    if (!hasData(previous)) return null;
+    const prevIndex = index - 1;
+    const prevDays = daysIn(data.year, prevIndex);
+    const full = Object.fromEntries(COMPARE_KEYS.map(key => [key, Number(previous.kpis[key] || 0)]));
+    if (closed || to >= prevDays) {
+      const label = rangeText(prevIndex, 1, prevDays);
+      return { totals: full, real: [], label, shortFor: () => label };
+    }
+    const tramo = dailyTramo(byDay, data.year, prevIndex, to, full);
+    const real = COMPARE_KEYS.filter(key => key in tramo);
+    const factor = to / prevDays;
+    const tramoLabel = rangeText(prevIndex, 1, to);
+    const prorated = `${MONTHS[prevIndex]} prorrateado a ${to} ${to === 1 ? 'día' : 'días'}`;
+    return {
+      totals: Object.fromEntries(COMPARE_KEYS.map(key => [key, key in tramo ? tramo[key] : full[key] * factor])),
+      real,
+      label: real.length === COMPARE_KEYS.length ? tramoLabel
+        : real.length ? `${tramoLabel} en ${listText(real.map(key => KPI_NAMES[key]))}; el resto, ${prorated}` : prorated,
+      shortFor: key => (key in tramo ? tramoLabel : `${SHORT_MONTHS[prevIndex]} prorrateado`),
+    };
+  }
+  // Sumas del 1 al dia "to" del mes anterior en el informe por dia. Una suma solo vale si el informe da en todo ese
+  // mes lo mismo que su hoja mensual: si empieza tarde (julio arranca el 6) o le faltan dias, queda prorrateada.
+  function dailyTramo(byDay, year, index, to, full) {
+    if (!byDay) return {};
+    const prefix = `${year}-${pad(index + 1)}-`;
+    const month = {}, tramo = {};
+    let days = 0;
+    byDay.forEach((totals, day) => {
+      if (!day.startsWith(prefix)) return;
+      days += 1;
+      COMPARE_KEYS.forEach(key => {
+        month[key] = (month[key] || 0) + (totals[key] || 0);
+        if (dayOf(day) <= to) tramo[key] = (tramo[key] || 0) + (totals[key] || 0);
+      });
+    });
+    if (!days) return {};
+    return Object.fromEntries(COMPARE_KEYS.filter(key => Math.abs((month[key] || 0) - full[key]) < 0.015).map(key => [key, tramo[key] || 0]));
+  }
+  const change = (now, before) => (isNum(now) && isNum(before) && Number(before) !== 0 ? (now - before) / before : null);
+  // "▲ 12.3% vs 1-18 Septiembre". El color depende de si subir es bueno para el indicador; la inversion es neutra.
+  function deltaHtml(now, before, better, label) {
+    const d = change(now, before);
+    if (d === null) return `<small class="kpi-delta flat">Sin dato en ${esc(label)}</small>`;
+    const direction = Math.abs(d) < 0.0005 ? 'flat' : d > 0 ? 'up' : 'down';
+    const tone = direction === 'flat' || !better ? 'flat' : direction === better ? 'good' : 'bad';
+    const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '●';
+    const pct = (Math.abs(d) * 100).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return `<small class="kpi-delta ${tone}">${arrow} ${pct}% vs ${esc(label)}</small>`;
+  }
+
   // ── Avisos de datos (hojas faltantes o copiadas) ───────────────────────────
   // Los avisos de la carpeta van en el detalle de la barra superior; la pildora se pone ambar mientras haya.
   function renderWarnings() {
     const host = document.getElementById('ads-warnings');
     const warnings = state.data.warnings || [];
-    document.getElementById('data-status-btn')?.classList.toggle('warn', Boolean(warnings.length));
-    document.getElementById('data-status-btn')?.classList.toggle('ok', !warnings.length);
     if (!host) return;
     host.hidden = !warnings.length;
     host.innerHTML = warnings.length ? `<strong>Revisar la carpeta de Drive</strong><ul>${warnings.map(text => `<li>${esc(text)}</li>`).join('')}</ul>` : '';
@@ -153,21 +253,39 @@
     months.forEach(month => Object.keys(totals).forEach(key => { if (key !== 'months') totals[key] += Number(month.kpis[key] || 0); }));
     return { ...totals, sales: groupTotals(months, 'Ventas'), messages: groupTotals(months, 'Mensajes') };
   }
-  // KPIs del periodo elegido en las pestanas: un mes o el acumulado del ano.
+  // Vista anual: promedio por mes en lugar de variacion (no hay datos del ano anterior). Mientras haya meses
+  // cerrados el mes en curso queda fuera: un mes a medias bajaria el promedio.
+  function monthlyAverage(period) {
+    const closed = period.months.filter(month => month.status === 'cerrado');
+    const months = closed.length ? closed : period.months;
+    const totals = yearTotals(months);
+    return { values: Object.fromEntries(COMPARE_KEYS.map(key => [key, totals[key] / months.length])), basis: `Promedio de ${months.map(month => month.name).join(', ')}` };
+  }
+  // KPIs del periodo elegido en las pestanas: un mes (con su variacion contra el mes anterior) o el acumulado del ano.
   function renderKpis() {
     const host = document.getElementById('kpi-strip');
     const period = current();
     if (!period) return;
     const t = yearTotals(period.annual ? period.months : [period]);
     const cutoff = longDate(state.data.cutoff);
-    const cards = [
-      ['Inversión Meta Ads', fmtMoney(t.spend), period.annual ? `Acumulado al ${cutoff} | ${t.months} meses con datos` : `${period.period || period.name} | ${period.campaigns.length} campañas`],
-      ['Valor de compras', fmtMoney(t.revenue), `ROAS ${fmtRoas(ratio(t.revenue, t.spend))} total | ${fmtRoas(ratio(t.sales.revenue, t.sales.spend))} en Ventas`],
-      ['Compras', fmtCount(t.purchases), `${fmtMoney(ratio(t.sales.spend, t.sales.purchases))} por compra en Ventas`],
-      ['Conversaciones', fmtCount(t.conversations), `WhatsApp | ${fmtCost(ratio(t.messages.spend, t.messages.conversations))} por conversación`],
-      ['Clics en el enlace', fmtCount(t.clicks), `${fmtCost(ratio(t.spend, t.clicks))} por clic | ${fmtCompact(t.landingViews, false)} visitas a la web`],
-    ];
-    host.innerHTML = cards.map(([name, value, meta]) => `<div class="kpi-pill"><span>${name}</span><strong>${value}</strong><small>${meta}</small></div>`).join('');
+    const notes = {
+      spend: period.annual ? `Acumulado al ${cutoff} | ${t.months} meses con datos` : `${period.campaigns.length} campañas`,
+      revenue: `ROAS ${fmtRoas(ratio(t.revenue, t.spend))} total | ${fmtRoas(ratio(t.sales.revenue, t.sales.spend))} en Ventas`,
+      purchases: `${fmtMoney(ratio(t.sales.spend, t.sales.purchases))} por compra en Ventas`,
+      conversations: `WhatsApp | ${fmtCost(ratio(t.messages.spend, t.messages.conversations))} por conversación`,
+      clicks: `${fmtCost(ratio(t.spend, t.clicks))} por clic | ${fmtCompact(t.landingViews, false)} visitas a la web`,
+    };
+    const value = (kpi, number) => (kpi.money ? fmtMoney(number) : fmtCount(number));
+    const average = period.annual ? monthlyAverage(period) : null;
+    const compare = period.annual ? null : periodOf(state.data, state.daily, period).compare;
+    host.innerHTML = KPI_DEFS.map(kpi => {
+      const line = average
+        ? `<small title="${esc(average.basis)}">Prom. mensual: ${value(kpi, average.values[kpi.key])}</small>`
+        : compare
+          ? deltaHtml(t[kpi.key], compare.totals[kpi.key], kpi.better, compare.shortFor(kpi.key))
+          : '<small class="kpi-delta flat">Sin mes anterior para comparar</small>';
+      return `<div class="kpi-pill"><span>${kpi.label}</span><strong>${value(kpi, t[kpi.key])}</strong>${line}<small>${notes[kpi.key]}</small></div>`;
+    }).join('');
   }
 
   // ── Grafico mensual ────────────────────────────────────────────────────────
@@ -323,17 +441,30 @@
     if (!id || !/^[A-Za-z0-9_-]{10,}$/.test(id)) return '';
     return `<a class="refresh-sheet-btn ads-report-link" href="https://docs.google.com/spreadsheets/d/${esc(id)}/edit" target="_blank" rel="noopener">Abrir hoja del mes</a>`;
   }
-  // Cabecera del periodo (como en Terminal Pesquero): "Periodo: Octubre 2026 (mes en curso)" y su detalle.
+  // Cabecera del periodo como Royal Baby: "Periodo: 1-18 Octubre 2026 (mes en curso)", debajo "Comparación vs
+  // 1-18 Septiembre" y la fuente.
   function renderPeriod(month) {
-    const open = month.status === 'parcial';
-    document.getElementById('period-title').textContent = month.annual
-      ? `Periodo: Anual 2026${open ? ' (año en curso)' : ''}`
-      : `Periodo: ${month.name} 2026${open ? ' (mes en curso)' : ''}`;
-    const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
-    const source = month.annual
-      ? `Acumulado de ${month.months.length} meses con datos (${month.months.map(item => SHORT_MONTHS[MONTHS.indexOf(item.name)]).join(', ')})`
-      : month.sheet ? `Hoja "${month.sheet.title}"` : 'Exportación de Meta Ads';
-    document.getElementById('period-sub').textContent = [source, days, `${month.campaigns.length} campañas`].filter(Boolean).join(' | ');
+    const year = state.data.year || 2026;
+    const campaigns = `${month.campaigns.length} campañas`;
+    let title, sub, source;
+    if (month.annual) {
+      const first = month.months[0];
+      const last = periodOf(state.data, null, month.months[month.months.length - 1]);
+      title = `Periodo: 1 ${first.name} - ${last.to} ${MONTHS[last.index]} ${year}${last.index === 11 && last.closed ? '' : ' (año en curso)'}`;
+      sub = `Acumulado de ${month.months.length} meses con datos (${month.months.map(item => SHORT_MONTHS[MONTHS.indexOf(item.name)]).join(', ')}). Sin año anterior para comparar.`;
+      source = ['Fuente: hojas mensuales de Meta Ads en Drive', campaigns];
+    } else {
+      const period = periodOf(state.data, state.daily, month);
+      title = `Periodo: ${period.label} ${year}${period.closed ? '' : ' (mes en curso)'}`;
+      sub = period.compare ? `Comparación vs ${period.compare.label}` : 'Sin mes anterior para comparar';
+      const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
+      const daily = period.compare?.real.length ? `${MONTHS[period.index - 1]} del informe por día` : '';
+      source = [`Fuente: ${month.sheet ? `hoja "${month.sheet.title}"` : 'exportación de Meta Ads'}`, days, campaigns, daily];
+    }
+    document.getElementById('period-title').textContent = title;
+    document.getElementById('period-sub').textContent = sub;
+    const sourceNode = document.getElementById('period-source');
+    if (sourceNode) sourceNode.textContent = source.filter(Boolean).join(' | ');
     document.getElementById('period-actions').innerHTML = month.annual ? '' : sheetLink(month);
   }
   function summaryCard(month) {
@@ -427,7 +558,35 @@
           <td>${hasAds ? `<button type="button" class="ads-expand" data-key="${key}" aria-expanded="${open}">${open ? 'Ocultar' : `Ver ${campaign.topAds.length}`}</button>` : '<span class="no-data">—</span>'}</td>
         </tr>
         ${open ? `<tr class="ads-detail-row"><td colspan="13">${adsDetail(campaign)}</td></tr>` : ''}`;
-    }).join('');
+    }).join('') + totalRow(rows.map(({ campaign }) => campaign), month);
+  }
+  // "Total del periodo" de las campanas a la vista (respeta el filtro de tipo): las sumas salen de las campanas y
+  // CPM, costo por clic y ROAS se recalculan sobre esas sumas. El resultado principal solo se suma si todas son
+  // del mismo tipo (compras, conversaciones y ThruPlays no se suman entre si).
+  function totalRow(campaigns, month) {
+    const sum = key => campaigns.reduce((total, campaign) => total + Number(campaign[key] || 0), 0);
+    const t = { spend: sum('spend'), impressions: sum('impressions'), clicks: sum('clicks'), purchases: sum('purchases'), revenue: sum('revenue') };
+    const groups = new Set(campaigns.map(campaign => campaign.group));
+    const result = groups.size === 1
+      ? mainResult({ group: campaigns[0].group, purchases: t.purchases, conversations: sum('conversations'), thruplays: sum('thruplays'), clicks: t.clicks })
+      : null;
+    const mixed = '<span class="no-data" title="Compras, conversaciones y ThruPlays no se suman entre sí">No se suman entre tipos</span>';
+    return `
+        <tr class="ads-total-row">
+          <td class="campaign-name">Total del periodo</td>
+          <td></td>
+          <td class="num">${fmtMoney(t.spend)}</td>
+          <td class="num">${fmtPct(ratio(t.spend * 100, month.kpis.spend))}</td>
+          <td class="num">${result ? `${fmtCount(result.value)} <small class="result-label">${result.label}</small>` : mixed}</td>
+          <td class="num">${fmtCount(t.impressions)}</td>
+          <td class="num">${fmtMoney(ratio(t.spend * 1000, t.impressions))}</td>
+          <td class="num">${fmtCount(t.clicks)}</td>
+          <td class="num">${fmtCost(ratio(t.spend, t.clicks))}</td>
+          <td class="num">${t.purchases ? fmtCount(t.purchases) : '—'}</td>
+          <td class="num">${t.revenue ? fmtMoney(t.revenue) : '—'}</td>
+          <td class="num">${t.revenue ? fmtRoas(ratio(t.revenue, t.spend)) : '—'}</td>
+          <td></td>
+        </tr>`;
   }
   function renderMonth() {
     const month = current();
@@ -482,21 +641,55 @@
   // sello syncedAt del JSON publicado cambie para volver a dibujar el tablero.
   function syncEndpoint() { return SYNC_TRIGGER_RE.test(SYNC_TRIGGER_ENDPOINT) ? SYNC_TRIGGER_ENDPOINT : ''; }
   function syncStamp(data) { return data?.syncedAt || data?.generatedAt || ''; }
-  function syncLabel(data) {
+  function syncDate(data) {
     const stamp = syncStamp(data);
     const date = stamp ? new Date(stamp.length === 10 ? `${stamp}T12:00:00` : stamp) : null;
-    if (!date || Number.isNaN(date.getTime())) return '';
-    const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()].toLowerCase()}`;
-    return stamp.length === 10 ? `Última sincronización: ${day}` : `Última sincronización: ${day}, ${date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
   }
-  function setSyncStatus(text, busy = false) {
+  function syncLabel(data) {
+    const date = syncDate(data);
+    if (!date) return '';
+    const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()].toLowerCase()}`;
+    return syncStamp(data).length === 10 ? `Última sincronización: ${day}` : `Última sincronización: ${day}, ${date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  function relativeTime(date) {
+    const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+    if (minutes < 1) return 'hace segundos';
+    if (minutes < 60) return `hace ${minutes} min`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `hace ${hours} h`;
+    return `hace ${Math.round(hours / 24)} d`;
+  }
+  // Pildora de la barra superior como Royal Baby, igual en todas las vistas. ok: "Sincronizado · hace 2 h";
+  // cargando: "Recargando…" mientras corre Actualizar; aviso: avisos de la carpeta de Drive o mas de un dia sin
+  // sincronizar; error: no se pudieron leer los datos o lanzar la sincronizacion (el detalle va en la tarjeta).
+  function renderPill() {
+    const pill = document.getElementById('data-status-btn');
+    const label = document.getElementById('topbar-status');
+    if (!pill || !label) return;
+    const date = syncDate(state.data);
+    const warned = Boolean(state.data?.warnings?.length) || !date || Date.now() - date.getTime() > STALE_MS;
+    const tone = state.syncing ? 'loading' : state.loadError || state.syncError ? 'err' : warned ? 'warn' : 'ok';
+    ['ok', 'loading', 'warn', 'err'].forEach(name => pill.classList.toggle(name, name === tone));
+    label.textContent = state.syncing ? 'Recargando…'
+      : state.loadError ? 'No se pudieron cargar los datos'
+        : state.syncError ? 'No se pudo sincronizar'
+          : date ? `Sincronizado · ${relativeTime(date)}` : 'Aún no sincronizado';
+  }
+  // Boton fantasma "Actualizar": el icono gira y el texto cambia mientras corre.
+  function setSyncBusy(busy) {
     const button = document.getElementById('ads-sync-btn');
-    const status = document.getElementById('ads-sync-status');
-    if (status) { status.textContent = text; status.hidden = !text; }
     if (!button) return;
     button.disabled = busy;
-    button.textContent = busy ? 'Actualizando...' : 'Actualizar';
+    button.classList.toggle('loading', busy);
+    const label = button.querySelector('.topbar-refresh-label');
+    if (label) label.textContent = busy ? 'Actualizando…' : 'Actualizar';
     button.title = syncEndpoint() ? 'Lee otra vez la carpeta de Drive y actualiza el tablero' : 'Vuelve a cargar los últimos datos publicados';
+  }
+  function setSyncStatus(text, busy = false) {
+    const status = document.getElementById('ads-sync-status');
+    if (status) { status.textContent = text; status.hidden = !text; }
+    setSyncBusy(busy);
   }
   // Proxima corrida automatica del workflow (7:00, 12:00 y 17:00 de Lima; GitHub puede demorarla unos minutos).
   function nextAutoSync() {
@@ -548,7 +741,18 @@
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
-  function applyData(data) {
+  // El informe por dia es opcional: sin el, el mes en curso se compara contra el mes anterior prorrateado.
+  async function fetchDaily() {
+    try {
+      const response = await fetch(`${DAILY_URL}?cb=${Date.now()}`, { cache: 'no-store' });
+      return response.ok ? await response.json() : null;
+    } catch {
+      return null;
+    }
+  }
+  async function applyData(data) {
+    const daily = dailyTotals(await fetchDaily());
+    if (daily) state.daily = daily;
     state.data = data;
     const withData = data.months.filter(hasData);
     if (state.month !== ANNUAL && !hasData(monthData(state.month))) state.month = withData[withData.length - 1]?.name || null;
@@ -558,14 +762,17 @@
   async function syncFromDrive() {
     if (state.syncing) return;
     state.syncing = true;
+    state.syncError = false;
+    renderPill();
     const before = syncStamp(state.data);
     const endpoint = syncEndpoint();
     try {
       // Sin Web App: solo se relee lo que publico la sincronizacion automatica.
       if (!endpoint) {
-        setSyncStatus('Buscando datos nuevos...', true);
+        setSyncStatus('Buscando datos nuevos…', true);
         const data = await fetchPublishedData().catch(() => null);
-        if (data && syncStamp(data) !== before) applyData(data);
+        if (data && syncStamp(data) !== before) await applyData(data);
+        state.syncError = !data;
         setSyncStatus(data
           ? `${syncStamp(data) !== before ? 'Datos actualizados.' : 'Ya tienes los últimos datos publicados.'} Sincronización ${SYNC_SCHEDULE}`
           : 'No se pudieron leer los datos. Intenta en unos minutos.');
@@ -576,6 +783,7 @@
         const result = await requestSync(endpoint);
         if (result.pending) setSyncStatus('Ya hay una sincronización en curso. El tablero se actualiza solo al terminar.', true);
       } catch (error) {
+        state.syncError = true;
         setSyncStatus(`No se pudo iniciar la sincronización (${error.message}). ${syncLabel(state.data)}`);
         return;
       }
@@ -584,7 +792,7 @@
         await new Promise(resolve => setTimeout(resolve, SYNC_POLL_MS));
         const data = await fetchPublishedData().catch(() => null);
         if (data && syncStamp(data) !== before) {
-          applyData(data);
+          await applyData(data);
           setSyncStatus(`Datos actualizados. ${syncLabel(data)}`);
           return;
         }
@@ -592,8 +800,8 @@
       setSyncStatus('Aún no llegan datos nuevos. Recarga la página en unos minutos.');
     } finally {
       state.syncing = false;
-      const button = document.getElementById('ads-sync-btn');
-      if (button) { button.textContent = 'Actualizar'; button.disabled = false; }
+      setSyncBusy(false);
+      renderPill();
     }
   }
 
@@ -601,6 +809,7 @@
     const folder = document.getElementById('ads-folder-link');
     if (folder && /^[A-Za-z0-9_-]{10,}$/.test(state.data.folderId || '')) folder.href = `https://drive.google.com/drive/folders/${state.data.folderId}`;
     renderWarnings();
+    renderPill();
     renderStatus();
     renderKpis();
     applyChartCollapsed();
@@ -651,6 +860,7 @@
   }
   async function init() {
     try {
+      const dailyRequest = fetchDaily();
       if (window.TLM_ADS_DATA) state.data = window.TLM_ADS_DATA;
       else {
         const response = await fetch(DATA_URL, { cache: 'no-store' });
@@ -660,11 +870,16 @@
       const withData = state.data.months.filter(hasData);
       if (!withData.length) throw new Error('Sin meses con datos');
       state.month = withData[withData.length - 1].name;
+      state.daily = dailyTotals(await dailyRequest);
       wireEvents();
       wireStatusCard();
       renderAll();
       setSyncStatus('');
+      // "hace N min" sigue al dia con el tablero abierto.
+      setInterval(renderPill, 60000);
     } catch (error) {
+      state.loadError = true;
+      renderPill();
       document.getElementById('view-obj').innerHTML = '<div class="data-notice error"><strong>No se pudo cargar la información de The Little Market.</strong></div>';
       console.error(error);
     }
@@ -673,6 +888,7 @@
   function snapshot() {
     return state.data ? JSON.parse(JSON.stringify(state.data)) : null;
   }
-  window.TLMObjectives = { renderHistory, snapshot };
+  // comparison: las funciones puras de la variacion contra el mes anterior (sirven para probarlas con Node).
+  window.TLMObjectives = { renderHistory, snapshot, comparison: { dailyTotals, periodOf, deltaHtml } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

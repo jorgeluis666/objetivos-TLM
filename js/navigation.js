@@ -1,52 +1,28 @@
 (function () {
   const VIEW_KEY = 'tlm-active-view';
-  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  // La fecha de corte sale de los datos sincronizados (cambia con cada sincronizacion con Drive).
-  function snapshot() {
-    return window.TLMObjectives?.snapshot?.() || null;
-  }
-  function cutoffLabel() {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(snapshot()?.cutoff || '');
-    return match ? `${Number(match[3])} de ${MONTHS[Number(match[2]) - 1]}` : '...';
-  }
-  function lastClosedLabel() {
-    const closed = (snapshot()?.months || []).filter(month => month.status === 'cerrado');
-    const last = closed[closed.length - 1];
-    return last ? `Cierre de ${last.name.toLowerCase()}` : 'Sin meses cerrados';
-  }
   const VIEW_META = {
     'view-obj': {
       title: 'Gasto publicitario 2026',
-      caption: 'Agencia Lima Retail',
-      status: () => `Datos al ${cutoffLabel()}`,
       source: 'Fuente: Meta Ads / exportaciones mensuales en Google Drive',
       footer: 'Sincronizado por Agencia Lima Retail',
     },
     'view-messages': {
       title: 'Proyecciones',
-      caption: 'Cierre del mes en curso en Meta Ads',
-      status: () => `Proyección sobre datos al ${cutoffLabel()}`,
       source: 'Fuente: Gasto publicitario / The Little Market',
       footer: 'Proyección lineal según el ritmo diario del mes',
     },
     'view-history': {
       title: 'Histórico de Campañas',
-      caption: 'Campañas de meses cerrados',
-      status: lastClosedLabel,
       source: 'Fuente: Meta Ads / Histórico consolidado',
       footer: 'Solo meses cerrados',
     },
     'view-reports': {
       title: 'Archivo de Reportes',
-      caption: 'Reportes en Drive y generador semanal',
-      status: () => `Datos al ${cutoffLabel()}`,
       source: 'Fuente: carpeta de reportes en Google Drive / Meta Ads por día',
       footer: 'Sincronizado por Agencia Lima Retail',
     },
     'view-log': {
       title: 'Bitácora',
-      caption: 'Checklist de cambios, comentarios y decisiones',
-      status: 'Editable',
       source: 'Fuente: registro de Agencia Lima Retail',
       footer: 'Las ediciones quedan como borrador hasta exportar y publicar el archivo',
     },
@@ -81,8 +57,9 @@
     });
 
     document.getElementById('topbar-title').textContent = meta.title;
-    document.getElementById('topbar-caption').textContent = meta.caption;
-    document.getElementById('topbar-status').textContent = typeof meta.status === 'function' ? meta.status() : meta.status;
+    // La bajada repite la descripcion del modulo en el panel lateral, como en Royal Baby.
+    const desc = document.querySelector(`[data-view-target="${viewId}"] .s-desc-nav`);
+    document.getElementById('topbar-caption').textContent = desc ? desc.textContent.trim() : '';
     document.getElementById('footer-source').textContent = meta.source;
     document.getElementById('footer-status').textContent = meta.footer;
     saveView(viewId);
@@ -137,12 +114,8 @@
         next.focus();
       });
     });
+    // La pildora de sincronizacion de la barra superior la maneja js/objectives.js (es la misma en todas las vistas).
     showView(storedView());
-    // Los datos llegan despues de la navegacion (y cambian al sincronizar): refresca la fecha de corte.
-    window.addEventListener('tlm:data-updated', () => {
-      const meta = VIEW_META[storedView()];
-      if (typeof meta?.status === 'function') document.getElementById('topbar-status').textContent = meta.status();
-    });
   }
 
   if (document.readyState === 'loading') {

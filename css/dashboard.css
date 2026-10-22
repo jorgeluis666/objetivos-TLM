@@ -2030,3 +2030,213 @@ button.topbar-pill[aria-expanded="true"] .status-chevron {
 .chart-panel.is-collapsed .chart-toggle svg {
   transform: rotate(180deg);
 }
+
+/* ===== Barra superior como Royal Baby (v1.5.0) ===== */
+/* Fija al hacer scroll y translucida. Lo que va fijo dentro del contenido (pantalla completa de una tabla, modal de
+   reportes, WhatsApp flotante) tiene z-index mayor que 10 y queda por encima. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 70px;
+  padding: 12px 30px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, .88);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .02);
+}
+
+.topbar-title {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.topbar-caption {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Pildora de sincronizacion: ok verde suave, cargando ambar con el punto latiendo, aviso ambar y error rojo. */
+.topbar-pill {
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+
+.topbar-pill .sync-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.topbar-pill.ok {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.topbar-pill.loading,
+.topbar-pill.warn {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.topbar-pill.err {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.topbar-pill.loading .sync-dot {
+  animation: topbar-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes topbar-pulse {
+  50% { opacity: .35; }
+}
+
+/* Tarjeta de detalle que abre la pildora, con las medidas de Royal Baby. */
+.data-status-card {
+  width: 330px;
+  border-radius: 11px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .14);
+}
+
+.data-status-head {
+  font-weight: 700;
+}
+
+.data-status-row {
+  font-size: 11px;
+}
+
+.data-status-row strong {
+  font-weight: 600;
+}
+
+/* Boton fantasma "Actualizar": borde fino, fondo blanco y texto e icono en el color de marca. */
+.topbar-refresh {
+  display: inline-flex;
+  height: 34px;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--brand);
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.topbar-refresh:hover:not(:disabled) {
+  border-color: var(--brand-border);
+  background: var(--brand-soft);
+}
+
+.topbar-refresh:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.topbar-refresh:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.topbar-refresh svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-refresh.loading svg {
+  animation: topbar-spin .9s linear infinite;
+}
+
+@keyframes topbar-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-pill.loading .sync-dot,
+  .topbar-refresh.loading svg {
+    animation: none;
+  }
+}
+
+@media (max-width: 760px) {
+  /* La barra se apila (titulo arriba, pildora y Actualizar abajo) y el detalle toma el ancho de la barra. */
+  .topbar {
+    flex-wrap: wrap;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .data-status {
+    position: static;
+  }
+
+  .data-status-card {
+    top: calc(100% - 4px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+
+/* ===== Variacion contra el mes anterior, linea del periodo y total de campanas (v1.5.0) ===== */
+/* "▲ 12.3% vs 1-18 Septiembre" como en Royal Baby: bueno en verde, malo en rojo, neutro (inversion) en gris. */
+.kpi-pill small.kpi-delta {
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.kpi-pill small + small {
+  margin-top: 4px;
+}
+
+.kpi-delta.good { color: #047857; }
+.kpi-delta.bad { color: #b91c1c; }
+.kpi-delta.flat { color: #52647d; }
+
+.period-source {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.data-table tr.ads-total-row td {
+  border-top: 1px solid var(--border);
+  background: #f8fbff;
+  font-weight: 700;
+}
+
+.data-table tr.ads-total-row .result-label,
+.data-table tr.ads-total-row .no-data {
+  font-weight: 500;
+}

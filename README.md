@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.4.1`.
+Version actual: `v1.5.0`.
 
 ## Versionado
 
@@ -16,12 +16,31 @@ El proyecto usa la nomenclatura `vMAJOR.MINOR.PATCH`:
 
 Convenciones de pantalla (desde la v1.4.1, alineadas con Royal Baby): soles como `S/. 1,234.56` (los datos sincronizados siguen trayendo `symbol: "S/"` y el tablero lo muestra con punto), un dato vacio como `—` (raya), meses "Septiembre"/"Sep", tildes y eñes en todos los textos ("Campaña"), pestaña del mes activa en los tonos verde azulado de la marca y tablas con numeros monoespaciados a la derecha. Al cambiar un archivo se sube su `?v=` en `index.html` a la version nueva.
 
+Barra superior (desde la v1.5.0, como Royal Baby): queda fija al hacer scroll, translucida (blanco al 88 % con
+desenfoque). A la izquierda, el boton para minimizar el panel, el titulo de la vista y como bajada la misma
+descripcion del modulo que muestra el panel lateral. A la derecha, la pildora de sincronizacion
+("Sincronizado · hace 2 h" en verde; "Recargando…" en ambar con el punto latiendo mientras corre Actualizar;
+ambar si hay avisos de la carpeta de Drive o mas de un dia sin sincronizar; rojo si no se pudo cargar o lanzar la
+sincronizacion), que abre el detalle (datos, ultima y proxima sincronizacion, hoja del mes, fuente y avisos), y
+el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y misma funcion de siempre).
+
 ## Modulos
 
 - Gasto publicitario de la cuenta de Meta Ads (S/.).
   - Tres tipos de campana: Ventas (compras en la tienda online), Mensajes (conversaciones de WhatsApp y
     visitas al perfil de Instagram) y Reconocimiento (ThruPlays).
-  - KPIs acumulados del ano: inversion, valor de compras y ROAS, compras, conversaciones y clics.
+  - KPIs del periodo: inversion, valor de compras y ROAS, compras, conversaciones y clics. Desde la v1.5.0 cada
+    KPI lleva su variacion contra el mes anterior como en Royal Baby ("▲ 12.3% vs 1-18 Septiembre"): verde si
+    mejora, rojo si empeora y gris en la inversion, que es neutra. Un mes cerrado se compara contra el mes
+    anterior completo; el mes en curso, contra el mismo tramo del mes anterior (del 1 al ultimo dia con datos)
+    sacado de `data/tlm-ads-daily.json`. Cada suma usa el informe por dia solo si ese informe da en el mes
+    anterior el mismo total que su hoja mensual (julio, por ejemplo, empieza el 6); si no, se compara contra el
+    mes anterior prorrateado a los mismos dias ("vs Sep prorrateado"). Sin mes anterior con datos (enero, o marzo
+    porque febrero no tiene hoja valida) la tarjeta dice "Sin mes anterior para comparar". En Anual va el
+    promedio por mes ("Prom. mensual"), sin contar el mes en curso mientras haya meses cerrados.
+  - Linea del periodo: "Periodo: 1-18 Octubre 2026 (mes en curso)" (Anual: "Periodo: 1 Enero - 18 Octubre
+    2026 (año en curso)"), debajo "Comparación vs 1-18 Septiembre" y la fuente (hoja del mes, dias con pauta,
+    campanas y si la comparacion sale del informe por dia).
   - Grafico mensual: inversion frente a valor de compras, compras, conversaciones, clics, costo por compra
     (inversion de la campana de Ventas / compras) y costo por conversacion (inversion de la campana de
     Mensajes / conversaciones), los mismos costos de los KPIs; un mes sin compras o sin conversaciones queda
@@ -30,7 +49,9 @@ Convenciones de pantalla (desde la v1.4.1, alineadas con Royal Baby): soles como
     decimales salvo montos menores a S/. 10.
   - Por mes: resumen con la distribucion por tipo de campana, embudo de compra de la campana de Ventas
     (impresiones > clics > visitas a la web > carrito > pagos iniciados > compras) y tabla de campanas con
-    sus mejores anuncios (con vista previa en Meta).
+    sus mejores anuncios (con vista previa en Meta). La tabla cierra con la fila "Total del periodo" de las
+    campanas a la vista (respeta el filtro de tipo): las sumas salen de las campanas y CPM, costo por clic y
+    ROAS se recalculan sobre esas sumas; el resultado principal solo se suma si todas son del mismo tipo.
   - Avisos cuando una hoja de Drive falta o no trae dias de su mes (por ejemplo, una copia del mes anterior).
 - Proyecciones: cierre estimado del mes en curso (ver abajo).
 - Historico de Campanas: campanas de los meses cerrados.
@@ -79,8 +100,7 @@ Todo corre en GitHub, sin credenciales de Google. `.github/workflows/sync-ads-da
 Corre de dos formas:
 
 - **Automatica:** 7:00 a. m., 12:00 m. y 5:00 p. m. (hora de Lima). Solo publica si cambiaron los datos.
-- **A pedido:** boton "Actualizar" de la barra superior (como en Terminal Pesquero; la pildora de estado a su
-  lado abre el detalle: datos, ultima y proxima sincronizacion, hoja del mes, fuente y avisos). Llama al Web App de Apps Script
+- **A pedido:** boton "Actualizar" de la barra superior. Llama al Web App de Apps Script
   `scripts/sync-trigger.gs`, que lanza el workflow con un token guardado en Apps Script (el cliente no
   entra a GitHub), y el tablero se actualiza solo cuando llega el nuevo JSON (2 a 4 minutos). Como mucho
   una corrida cada 4 minutos. Mientras `SYNC_TRIGGER_ENDPOINT` (`js/objectives.js`) este vacio, el boton
