@@ -71,6 +71,14 @@ NEXUS_COLUMNS = {
 # Nexus guarda el indicador crudo de Meta; la exportacion trae el nombre en espanol que mira add().
 NEXUS_RESULTS = (('thruplay', 'ThruPlay'), ('messaging_conversation', 'Conversaciones con mensajes iniciadas'),
                  ('profile_visit', 'Visitas al perfil de Instagram'), ('purchase', 'Compras en el sitio web'))
+# Lo mismo con el objetivo: Nexus manda OUTCOME_SALES y group_of() espera el "Ventas" de la exportacion.
+NEXUS_OBJECTIVES = {
+    'outcome_sales': 'Ventas', 'outcome_awareness': 'Reconocimiento', 'brand_awareness': 'Reconocimiento',
+    'outcome_traffic': 'Trafico', 'link_clicks': 'Trafico', 'outcome_engagement': 'Interaccion',
+    'post_engagement': 'Interaccion', 'outcome_leads': 'Clientes potenciales',
+    'lead_generation': 'Clientes potenciales', 'messages': 'Mensajes', 'conversions': 'Conversiones',
+    'reach': 'Alcance', 'video_views': 'Reproducciones de video',
+}
 # Lo que ese contrato no trae nunca; el alcance solo llega si el destino tiene "extended_fields".
 NEXUS_ABSENT = ('embudo', 'desglose por edad', 'vista previa')
 SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
@@ -222,6 +230,7 @@ def nexus_rows(book, exported):
             continue
         row['age'], row['sex'], row['nexus'] = 'Unknown', 'unknown', True
         row['resultType'] = result_type_of(row.get('resultType'))
+        row['objective'] = NEXUS_OBJECTIVES.get(norm(row.get('objective')), '')
         records.append(row)
     return records
 

@@ -95,6 +95,11 @@ por edad y sexo, ni vista previa del anuncio**, y tampoco alcance ni ThruPlays s
 cuenta en Nexus tenga activado `extended_fields`. Edad y sexo van como `Unknown`, la etiqueta que Meta usa
 para lo que no sabe y que el reporte semanal ya descarta al elegir su segmento.
 
+Nexus guarda los nombres crudos de Meta, asi que el barrido los traduce a los de la exportacion antes de
+mezclarlos: el indicador del resultado (`video_thruplay_watched_actions` pasa a `ThruPlay`, y de ahi salen
+los ThruPlays del mes) y el objetivo (`OUTCOME_SALES` pasa a `Ventas`). Sin esa segunda traduccion, una
+campana que solo apareciera en los dias de Nexus se agruparia bajo un grupo inventado, `OUTCOME_SALES`.
+
 El mes afectado lleva un bloque `nexus` (`from`, `to`, `days`, `missing`) y el tablero lo dice en la linea
 de fuente: «del 30 al 31 de octubre desde Nexus (sin alcance, embudo, desglose por edad, vista previa)».
 Un mes recien creado que solo tenga la pestana de Nexus tambien se lee: la exportacion dejo de ser
