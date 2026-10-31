@@ -2420,7 +2420,13 @@ body.ads-table-full { overflow: hidden; }
 
 /* ── Campañas en marcos (v1.8.0) ───────────────────────────────────────────
    Un cuadro por campaña, como en Terminal Pesquero, en vez de una fila por campaña. */
-.campaign-blocks { display: grid; gap: 14px; }
+/* minmax(0, 1fr) y min-width: 0 son obligatorios: un hijo de grid no encoge por debajo del ancho de su
+   contenido, y las tablas de conjuntos y anuncios son mas anchas que la pantalla. Sin esto el cuadro
+   entero se estira, y con el se salen de la vista las tarjetas de indicadores y los botones del grafico. */
+.campaign-blocks { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.campaign-block { min-width: 0; }
+.campaign-block .table-scroll,
+.campaign-block .chart-wrap { max-width: 100%; }
 
 .campaign-block {
   padding: 16px;
