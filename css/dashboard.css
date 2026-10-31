@@ -2242,3 +2242,151 @@ button.topbar-pill[aria-expanded="true"] .status-chevron {
 .data-table tr.ads-total-row .no-data {
   font-weight: 500;
 }
+
+/* ── Anuncios (v1.7.0) ─────────────────────────────────────────────────────
+   Mismo lenguaje del resto: tarjeta blanca, borde fino y nada de barras de color. */
+.ad-top-head {
+  margin-bottom: 12px;
+  color: #7b8da6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ad-top-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ad-top-card {
+  min-height: 118px;
+  padding: 14px 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.ad-top-group {
+  color: #7b8da6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ad-top-name {
+  margin-top: 6px;
+  overflow: hidden;
+  color: #06132b;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-top-name a { color: inherit; text-decoration: none; }
+.ad-top-name a:hover { text-decoration: underline; }
+
+.ad-top-value {
+  margin-top: 8px;
+  color: #06132b;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-top-value small {
+  margin-left: 7px;
+  color: #7b8da6;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ad-top-meta,
+.ad-top-none { margin-top: 6px; color: #7b8da6; font-size: 11px; }
+.ad-top-card.empty { background: #f8fafc; }
+
+.table-tools { display: flex; align-items: center; gap: 8px; }
+
+.table-tool-btn,
+.table-tool-select {
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-tool-btn:hover,
+.table-tool-select:hover { border-color: #94a3b8; background: #f8fafc; }
+.table-tool-btn[aria-pressed="true"] { border-color: var(--brand-border); color: var(--brand-text); background: var(--brand-soft); }
+
+.ads-board-table .ad-name-col { max-width: 240px; color: var(--ink); font-size: 11px; font-weight: 600; }
+.ads-board-table .ad-name-col a { color: inherit; text-decoration: none; }
+.ads-board-table .ad-name-col a:hover { text-decoration: underline; }
+.ads-board-table .ad-set-col { min-width: 170px; color: #475569; font-size: 10px; }
+.ads-board-table .ad-set-col small { display: block; margin-top: 3px; color: #94a3b8; }
+.leader-star { color: #d97706; }
+
+/* Densidad compacta: la tabla tiene diecisiete columnas y a veces se quiere ver el mes entero. */
+.table-scroll.compact .data-table td { padding: 7px 12px; }
+.table-scroll.compact .data-table th { padding: 7px 12px; }
+
+/* Pantalla completa: la tabla ocupa la ventana y el resto de la vista se queda detrás. */
+body.ads-table-full { overflow: hidden; }
+#view-ads.table-full .panel:last-child {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  overflow: auto;
+  border-radius: 0;
+}
+
+/* ── Calculadora de Inversión (v1.7.0) ─────────────────────────────────── */
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.calc-field { display: block; }
+
+.calc-field span {
+  display: block;
+  margin-bottom: 6px;
+  color: #7b8da6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.calc-field input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #06132b;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-field input:focus { border-color: var(--brand); outline: none; }
+#calc-kpis { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+.calc-note { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.data-table tr.row-current td { background: var(--brand-soft); }
+
+@media (max-width: 980px) {
+  .ad-top-list, .calc-grid { grid-template-columns: 1fr; }
+  #calc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -438,6 +438,8 @@
     });
     renderKpis();
     renderMonth();
+    // Anuncios comparte el mes con esta vista: cambiar de mes aqui lo repinta alla.
+    window.dispatchEvent(new CustomEvent('tlm:month-changed', { detail: { month: name } }));
   }
   function sheetLink(month) {
     const id = month.sheet?.id;
@@ -918,6 +920,7 @@
     return state.data ? JSON.parse(JSON.stringify(state.data)) : null;
   }
   // comparison: las funciones puras de la variacion contra el mes anterior (sirven para probarlas con Node).
-  window.TLMObjectives = { renderHistory, snapshot, comparison: { dailyTotals, periodOf, deltaHtml } };
+  window.TLMObjectives = { renderHistory, snapshot, selectMonth, month: () => state.month,
+                           comparison: { dailyTotals, periodOf, deltaHtml } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

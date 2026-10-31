@@ -8,21 +8,29 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/dashboard.css?v=1.5.0">
+<link rel="stylesheet" href="css/dashboard.css?v=1.7.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.6.1</span></div></div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.7.0</span></div></div>
     <div class="s-group-lbl">Módulos activos</div>
     <button title="Gasto publicitario" class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
       <div class="s-text"><div class="s-title-nav">Gasto publicitario</div><div class="s-desc-nav">Meta Ads</div></div>
     </button>
+    <button title="Anuncios" class="s-item" type="button" data-view-target="view-ads">
+      <div class="s-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="m10 9 5 2-5 2z"/></svg></div>
+      <div class="s-text"><div class="s-title-nav">Anuncios</div><div class="s-desc-nav">Cada anuncio con sus resultados</div></div>
+    </button>
     <button title="Proyecciones" class="s-item" type="button" data-view-target="view-messages">
       <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-6"/><path d="M16 8h4v4"/></svg></div>
       <div class="s-text"><div class="s-title-nav">Proyecciones</div><div class="s-desc-nav">Cierre del mes en curso</div></div>
+    </button>
+    <button title="Calculadora de Inversión" class="s-item" type="button" data-view-target="view-calculator">
+      <div class="s-icon"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="10" y2="16"/><line x1="14" y1="16" x2="16" y2="16"/></svg></div>
+      <div class="s-text"><div class="s-title-nav">Calculadora de Inversión</div><div class="s-desc-nav">Cuánto invertir para una meta de ventas</div></div>
     </button>
     <button title="Histórico de Campañas" class="s-item" type="button" data-view-target="view-history">
       <div class="s-icon"><svg viewBox="0 0 24 24"><path d="M3 4h18"/><path d="M3 10h18"/><path d="M3 16h18"/><path d="M7 4v16"/><path d="M17 4v16"/></svg></div>
@@ -69,6 +77,57 @@
         <div class="panel campaigns-panel">
           <div class="panel-head campaigns-panel-head"><div><div class="panel-title" id="campaigns-title">Campañas del mes</div><div class="panel-sub" id="campaigns-sub"></div></div><div class="chart-series-toggles" id="campaigns-filter" role="group" aria-label="Filtrar por tipo de campaña"><label class="series-toggle active" data-series="all"><input type="radio" name="ads-group-filter" value="all" checked>Todas</label><label class="series-toggle" data-series="Ventas"><input type="radio" name="ads-group-filter" value="Ventas">Ventas</label><label class="series-toggle" data-series="Mensajes"><input type="radio" name="ads-group-filter" value="Mensajes">Mensajes</label><label class="series-toggle" data-series="Reconocimiento"><input type="radio" name="ads-group-filter" value="Reconocimiento">Reconocimiento</label></div></div>
           <div class="table-scroll"><table class="data-table campaigns-table ads-table"><thead><tr><th>Campaña</th><th>Tipo</th><th class="num">Inversión</th><th class="num">% del mes</th><th class="num">Resultado principal</th><th class="num">Impresiones</th><th class="num">CPM</th><th class="num">Clics en el enlace</th><th class="num">Costo por clic</th><th class="num">Compras</th><th class="num">Valor de compras</th><th class="num">ROAS</th><th>Mejores anuncios</th></tr></thead><tbody id="campaigns-body"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-ads">
+        <h1 class="section-title">Anuncios · Meta Ads por anuncio</h1>
+        <p class="section-desc">Cada anuncio con su resultado, su inversión y la comparación con el mismo tramo del mes anterior. El mes es el mismo que elijas en Gasto publicitario.</p>
+        <div class="month-tabs" id="ads-month-tabs" role="group" aria-label="Mes de los anuncios"></div>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title" id="ads-period-title">Cargando datos de Meta…</div><div class="panel-sub" id="ads-period-sub"></div></div></div>
+          <div class="ad-top" id="ads-top"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div><div class="panel-title" id="ads-table-title">Anuncios del periodo</div><div class="panel-sub" id="ads-table-sub"></div></div>
+            <div class="table-tools">
+              <label class="sr-only" for="ads-group">Filtrar por tipo de campaña</label>
+              <select class="table-tool-select" id="ads-group"><option value="all">Todos los tipos</option></select>
+              <button type="button" class="table-tool-btn" id="ads-density-btn" aria-pressed="false" title="Alternar la altura de las filas">Compacto</button>
+              <button type="button" class="table-tool-btn" id="ads-expand-btn" aria-pressed="false" title="Ver la tabla en pantalla completa (Esc para salir)">⤢ Pantalla completa</button>
+            </div>
+          </div>
+          <div class="table-scroll" id="ads-table-scroll" tabindex="0" role="region" aria-label="Tabla de anuncios">
+            <table class="data-table ads-board-table">
+              <thead><tr><th>Tipo</th><th>Anuncio</th><th>Campaña / conjunto</th><th>Resultado</th><th class="num">Resultados</th><th class="num" id="ads-prev-head">Mes anterior</th><th class="num">Variación</th><th class="num">Costo por resultado</th><th class="num">Inversión</th><th class="num">Compras</th><th class="num">Valor de compras</th><th class="num">ROAS</th><th class="num">Impresiones</th><th class="num">Alcance</th><th class="num">CPM</th><th class="num">Clics</th><th class="num">Días activos</th></tr></thead>
+              <tbody id="ads-board-body"><tr><td class="table-empty" colspan="17">Cargando datos de Meta…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-calculator">
+        <h1 class="section-title">Calculadora de Inversión · Meta de ventas</h1>
+        <p class="section-desc">De la facturación que quieres cerrar a la inversión que haría falta en Meta Ads, con el ticket promedio y el ROAS reales de la cuenta. Cambia cualquier campo y el resto se recalcula.</p>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Tu meta</div><div class="panel-sub" id="calc-base">Cargando datos de Meta…</div></div></div>
+          <div class="calc-grid">
+            <label class="calc-field"><span>Facturación objetivo del mes</span><input type="number" id="calc-goal" min="0" step="100" inputmode="decimal"></label>
+            <label class="calc-field"><span>Ticket promedio</span><input type="number" id="calc-ticket" min="0" step="1" inputmode="decimal"></label>
+            <label class="calc-field"><span>ROAS esperado</span><input type="number" id="calc-roas" min="0.01" step="0.05" inputmode="decimal"></label>
+          </div>
+          <div class="kpi-strip" id="calc-kpis"></div>
+          <p class="calc-note" id="calc-note"></p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Qué pasa si el ROAS no es el esperado</div><div class="panel-sub">La misma facturación objetivo con distintos retornos. El ROAS real de la cuenta va marcado.</div></div></div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>Escenario</th><th class="num">ROAS</th><th class="num">Inversión necesaria</th><th class="num">Costo por compra</th><th class="num">Diferencia</th></tr></thead>
+              <tbody id="calc-scenarios"><tr><td class="table-empty" colspan="5">Cargando datos de Meta…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -250,7 +309,9 @@
     <div class="reports-modal-foot">La vista previa usa el visor de Google Drive. Si no carga, abre el documento en Drive.</div>
   </div>
 </div>
-<script src="js/objectives.js?v=1.6.0"></script>
+<script src="js/objectives.js?v=1.7.0"></script>
+<script src="js/anuncios.js?v=1.7.0"></script>
+<script src="js/calculadora.js?v=1.7.0"></script>
 <script src="js/projections.js?v=1.5.0"></script>
 <script src="js/bitacora.js?v=1.5.0"></script>
 <script src="js/reports-archive.js?v=1.5.0"></script>

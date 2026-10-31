@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.6.1`.
+Version actual: `v1.7.0`.
 
 ## Versionado
 
@@ -56,6 +56,25 @@ el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y
     campanas a la vista (respeta el filtro de tipo): las sumas salen de las campanas y CPM, costo por clic y
     ROAS se recalculan sobre esas sumas; el resultado principal solo se suma si todas son del mismo tipo.
   - Avisos cuando una hoja de Drive falta o no trae dias de su mes (por ejemplo, una copia del mes anterior).
+- Anuncios (desde la v1.7.0, con la estructura del tablero de Terminal Pesquero): Meta Ads anuncio por
+  anuncio, justo despues de Gasto publicitario y compartiendo el mes con el: cambiarlo en una vista lo
+  cambia en la otra, en los dos sentidos.
+  - Pestanas de mes y Anual. En Anual las cifras de un anuncio se suman entre meses y no hay comparacion.
+  - Mejor anuncio de cada tipo de campana, una tarjeta por tipo. No hay un Top 3 unico a proposito: el
+    resultado de una pieza de Ventas son compras, el de una de Mensajes conversaciones y el de una de
+    Reconocimiento ThruPlays, y rankearlos juntos compararia cosas distintas.
+  - Tabla de anuncios con 17 columnas: tipo, anuncio (con enlace a la vista previa y estrella en el lider
+    de su tipo), campana y conjunto, tipo de resultado, resultados, los del mes anterior, variacion, costo
+    por resultado, inversion, compras, valor de compras, ROAS, impresiones, alcance, CPM, clics y dias
+    activos. Filtro por tipo de campana, densidad compacta recordada en `localStorage` y pantalla completa
+    (`Esc` sale). El mes anterior es el anterior **con anuncios**, que no siempre es el de al lado.
+  - Las columnas de compras, valor y ROAS son propias de esta cuenta: Terminal Pesquero no vende en linea
+    y su tabla no las tiene.
+- Calculadora de Inversion (desde la v1.7.0): de una meta de facturacion a la inversion que haria falta.
+  La de Terminal Pesquero va por CPL de mensajes porque esa cuenta vende por WhatsApp; esta va por la
+  cadena del e-commerce: facturacion objetivo -> compras necesarias (ticket promedio) -> inversion
+  necesaria (ROAS). Los tres campos arrancan con los numeros reales del ano y se pueden cambiar.
+  Debajo, la misma meta con el ROAS a la mitad, el que pusiste, un 25 % mejor y el doble.
 - Proyecciones: cierre estimado del mes en curso (ver abajo).
 - Historico de Campanas: campanas de los meses cerrados.
 - Bitacora: checklist editable de cambios, comentarios y decisiones con fecha (ver abajo).
@@ -83,6 +102,14 @@ sexo y anuncio; importes en PEN).
   datos del dia 30, la regla del penultimo dia daba octubre entero por cerrado y el tablero decia
   "Periodo: 1 - 31 Octubre" estando a 30, comparando ademas contra septiembre completo. "Hoy" se calcula
   en Lima, no en UTC, porque el barrido corre en UTC y de noche alla ya es el dia siguiente.
+
+### La tabla de anuncios (desde la v1.7.0)
+
+Cada mes lleva ademas `ads`: una fila por anuncio con el detalle que usa el modulo Anuncios. Van en
+columnas, con el orden en `adColumns` de la raiz, porque son todos los anuncios de los doce meses y con
+las claves repetidas el archivo pesaria el doble; aun asi el JSON pasa de 65 KB a unos 170 KB. El "tipo
+de resultado" de cada anuncio es el que mas resultados le trae: la exportacion mezcla varios en la misma
+columna y una pieza puede cambiar de objetivo a mitad de mes. "Dias" cuenta solo los dias con inversion.
 
 ### La pestana "Nexus Meta" (desde la v1.6.0)
 

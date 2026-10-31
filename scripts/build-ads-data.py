@@ -58,12 +58,13 @@ COLUMNS = {
     'compras': 'purchases', 'valor de conversion de compras': 'revenue',
     'conversaciones con mensajes iniciadas': 'conversations', 'tipo de resultado': 'resultType', 'resultados': 'results',
     'enlace de vista previa': 'preview', 'nombre de la campana': 'campaign', 'edad': 'age', 'sexo': 'sex',
+    'nombre del conjunto de anuncios': 'adSet',
 }
 NEXUS_MARK = 'NEXUS_META_V1'
 # Cabecera de la pestana que escribe Nexus -> clave interna. Las cinco ultimas solo llegan si su destino
 # tiene activado "extended_fields"; sin ellas no hay alcance ni ThruPlays de esos dias.
 NEXUS_COLUMNS = {
-    'level': 'level', 'day': 'day', 'name': 'ad', 'campaign': 'campaign', 'spend': 'spend',
+    'level': 'level', 'day': 'day', 'name': 'ad', 'campaign': 'campaign', 'adset': 'adSet', 'spend': 'spend',
     'impressions': 'impressions', 'inline_link_clicks': 'clicks', 'purchases': 'purchases',
     'purchase_value': 'revenue', 'messages': 'conversations',
     'reach': 'reach', 'objective': 'objective', 'result_type': 'resultType', 'results': 'results',
@@ -86,6 +87,11 @@ SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart'
 METRICS = SUMMED + ['profileVisits', 'thruplays']
 MONEY = {'spend', 'revenue'}
 AD_FIELDS = ['spend', 'impressions', 'clicks', 'purchases', 'revenue', 'conversations', 'profileVisits', 'thruplays']
+# Tabla del modulo Anuncios: una fila por anuncio del mes. Va en columnas y no en objetos porque son todos
+# los anuncios de los doce meses, y con las claves repetidas el archivo pesaria el doble.
+AD_TABLE_METRICS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts',
+                    'purchases', 'revenue', 'conversations', 'profileVisits', 'thruplays']
+AD_TABLE_COLUMNS = ['name', 'campaign', 'adSet', 'group', 'resultType', 'results', 'days', 'url'] + AD_TABLE_METRICS
 # Orden de los mejores anuncios segun el objetivo de la campana.
 TOP_SORT = {'Ventas': ('purchases', 'revenue', 'clicks'), 'Mensajes': ('conversations', 'profileVisits', 'clicks'),
             'Reconocimiento': ('thruplays', 'impressions')}
@@ -256,6 +262,46 @@ def top_ads(rows, group):
     return result
 
 
+def ads_table(rows):
+    """Una fila por anuncio del mes, de mas a menos inversion, para el modulo Anuncios.
+
+    El tipo de resultado es el que mas resultados le trae al anuncio: la exportacion mezcla varios en la
+    misma columna (ThruPlay, compras, conversaciones, visitas al perfil) y un anuncio puede cambiar de
+    objetivo a mitad de mes. "Dias" cuenta solo los dias con inversion, que es lo que mide cuanto corrio."""
+    ads = {}
+    for row in rows:
+        name = str(row.get('ad') or '').strip() or '(sin nombre)'
+        ad = ads.setdefault((name, row['campaign']),
+                            {'name': name, 'campaign': row['campaign'], 'objective': '', 'sets': {},
+                             'kinds': {}, 'days': set(), 'url': None, **zero()})
+        add(ad, row)
+        spend = num(row.get('spend'))
+        if spend > 0:
+            ad['days'].add(row['day'])
+        if not ad['objective'] and row.get('objective'):
+            ad['objective'] = str(row['objective']).strip()
+        adset = str(row.get('adSet') or '').strip()
+        if adset:
+            ad['sets'][adset] = ad['sets'].get(adset, 0) + spend
+        kind = str(row.get('resultType') or '').strip()
+        if kind:
+            ad['kinds'][kind] = ad['kinds'].get(kind, 0) + num(row.get('results'))
+        url = row.get('preview')
+        if not ad['url'] and isinstance(url, str) and url.startswith('https://'):
+            ad['url'] = url
+    table = []
+    for ad in ads.values():
+        if ad['spend'] <= 0 and ad['impressions'] <= 0:
+            continue
+        kind, results = max(ad['kinds'].items(), key=lambda item: item[1], default=('', 0))
+        adset = max(ad['sets'].items(), key=lambda item: item[1], default=('', 0))[0]
+        values = rounded(ad, AD_TABLE_METRICS)
+        table.append([ad['name'], ad['campaign'], adset, group_of(ad['campaign'], ad['objective']),
+                      kind, int(round(results)), len(ad['days']), ad['url'] or '']
+                     + [values[key] for key in AD_TABLE_METRICS])
+    return sorted(table, key=lambda row: -row[AD_TABLE_COLUMNS.index('spend')])
+
+
 def campaigns_of(rows):
     by_name = {}
     for row in rows:
@@ -409,7 +455,7 @@ def build(drive):
         for campaign in campaigns:
             by_group[campaign['group']] = round(by_group.get(campaign['group'], 0) + campaign['spend'], 2)
         entry.update({'firstDay': days[0].isoformat(), 'lastDay': days[-1].isoformat(), 'kpis': rounded(totals),
-                      'spendByGroup': by_group, 'campaigns': campaigns})
+                      'spendByGroup': by_group, 'campaigns': campaigns, 'ads': ads_table(inside)})
 
     with_data = [i for i, month in enumerate(months) if month['kpis']]
     cutoff = None
@@ -442,6 +488,8 @@ def build(drive):
         'source': 'Exportaciones de Meta Ads (Google Drive)',
         'platform': {'key': 'meta', 'label': 'Meta Ads', 'currency': CURRENCY, 'symbol': 'S/'},
         'folderId': folder_id or os.environ.get('TLM_META_FOLDER_ID', '1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie'),
+        # Orden de las columnas de months[].ads, que van en filas para que el archivo no pese el doble.
+        'adColumns': AD_TABLE_COLUMNS,
         'warnings': warnings_list,
         'months': months,
     }
