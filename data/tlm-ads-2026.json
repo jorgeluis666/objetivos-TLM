@@ -3,7 +3,7 @@
  "year": 2026,
  "cutoff": "2026-10-30",
  "generatedAt": "2026-10-31",
- "syncedAt": "2026-10-31T03:58:07Z",
+ "syncedAt": "2026-10-31T04:08:32Z",
  "source": "Exportaciones de Meta Ads (Google Drive)",
  "platform": {
   "key": "meta",
@@ -12,9 +12,7 @@
   "symbol": "S/"
  },
  "folderId": "1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie",
- "warnings": [
-  "Febrero: la hoja \"The Little Market - Febrero 2026\" no trae dias de febrero (sus fechas van del 4/01 al 29/01). Revisa que no sea una copia de otro mes."
- ],
+ "warnings": [],
  "months": [
   {
    "name": "Enero",
@@ -297,18 +295,198 @@
   },
   {
    "name": "Febrero",
-   "status": "sin-datos",
-   "period": null,
+   "status": "cerrado",
+   "period": "1 - 28 Febrero 2026",
    "sheet": {
     "title": "The Little Market - Febrero 2026",
     "id": "1xbykLZnrd2U4MfDgigB-FsS4xcqctPAr1H8JQrXXf00"
    },
-   "firstDay": null,
-   "lastDay": null,
-   "kpis": null,
-   "spendByGroup": {},
-   "campaigns": [],
-   "notice": "La hoja no trae dias de este mes"
+   "firstDay": "2026-02-06",
+   "lastDay": "2026-02-28",
+   "kpis": {
+    "spend": 721.71,
+    "impressions": 154415,
+    "reach": 139614,
+    "clicks": 1069,
+    "landingViews": 728,
+    "addToCart": 137,
+    "checkouts": 14,
+    "purchases": 7,
+    "revenue": 785.75,
+    "conversations": 0,
+    "interactions": 308,
+    "profileVisits": 0,
+    "thruplays": 42739
+   },
+   "spendByGroup": {
+    "Ventas": 398.39,
+    "Reconocimiento": 323.32
+   },
+   "campaigns": [
+    {
+     "name": "E-Commerce | LR | Ventas",
+     "objective": "Ventas",
+     "group": "Ventas",
+     "spend": 398.39,
+     "impressions": 34960,
+     "reach": 23586,
+     "clicks": 890,
+     "landingViews": 728,
+     "addToCart": 137,
+     "checkouts": 14,
+     "purchases": 7,
+     "revenue": 785.75,
+     "conversations": 0,
+     "interactions": 29,
+     "profileVisits": 0,
+     "thruplays": 0,
+     "cpm": 11.4,
+     "cpc": 0.4476,
+     "topAds": [
+      {
+       "name": "Back to school - colección",
+       "spend": 103.27,
+       "impressions": 10124,
+       "clicks": 273,
+       "purchases": 4,
+       "revenue": 502.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 0
+      },
+      {
+       "name": "Noia - Colección",
+       "spend": 45.14,
+       "impressions": 3583,
+       "clicks": 40,
+       "purchases": 2,
+       "revenue": 101.5,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 0,
+       "url": "https://www.facebook.com/?feed_demo_ad=120239298089950345&h=AQJVq9eNY3qQub3--sCwzyjSHRw"
+      },
+      {
+       "name": "Carrusel Noia",
+       "spend": 68.1,
+       "impressions": 5918,
+       "clicks": 100,
+       "purchases": 1,
+       "revenue": 182.25,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 0,
+       "url": "https://www.facebook.com/?feed_demo_ad=120239230447060345&h=AQKW-s3ESzdKrqzonIcDsjOMQjo"
+      },
+      {
+       "name": "Carrusel Royal baby",
+       "spend": 85.89,
+       "impressions": 7147,
+       "clicks": 268,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 0,
+       "url": "https://www.facebook.com/?feed_demo_ad=120239297654490345&h=AQIGSQvL5Ft_AcYu9_oIU0d5Nxw"
+      },
+      {
+       "name": "My bump - carrusel",
+       "spend": 44.6,
+       "impressions": 3286,
+       "clicks": 73,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 0,
+       "url": "https://www.facebook.com/?feed_demo_ad=120239297939710345&h=AQLFaNS6pGTEzVHlVi0cWX9swI0"
+      }
+     ]
+    },
+    {
+     "name": "Campaña reconocimiento | LR Gasto total 2025",
+     "objective": "Reconocimiento",
+     "group": "Reconocimiento",
+     "spend": 323.32,
+     "impressions": 119455,
+     "reach": 116028,
+     "clicks": 179,
+     "landingViews": 0,
+     "addToCart": 0,
+     "checkouts": 0,
+     "purchases": 0,
+     "revenue": 0.0,
+     "conversations": 0,
+     "interactions": 279,
+     "profileVisits": 0,
+     "thruplays": 42739,
+     "cpm": 2.71,
+     "cpc": 1.8063,
+     "topAds": [
+      {
+       "name": "Simone nos visitó",
+       "spend": 149.31,
+       "impressions": 68778,
+       "clicks": 122,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 19812,
+       "url": "https://www.facebook.com/?feed_demo_ad=120238198166540345&h=AQJy_CrQXl4bXDPFIPzDwwHImEM"
+      },
+      {
+       "name": "Rosalie nos cuenta su experiencia haciendo su lista",
+       "spend": 88.58,
+       "impressions": 24166,
+       "clicks": 30,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 11116,
+       "url": "https://www.facebook.com/?feed_demo_ad=120235141246110345&h=AQKR61P1a8k_WaiPnyeZZi7SKBY"
+      },
+      {
+       "name": "Outfits para la playa",
+       "spend": 32.82,
+       "impressions": 12524,
+       "clicks": 15,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 4132,
+       "url": "https://www.facebook.com/?feed_demo_ad=120239611265930345&h=AQIXRR-C37WsHjCfxIYXCIdY66I"
+      },
+      {
+       "name": "Encuentra lo mejor en calzado",
+       "spend": 23.85,
+       "impressions": 6480,
+       "clicks": 3,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 3577,
+       "url": "https://www.facebook.com/?feed_demo_ad=120232943948900345&h=AQLG7nuKz5hS2R8Bcpb2NVxTJCg"
+      },
+      {
+       "name": "5 infaltables para tu lista de regalos de baby shower",
+       "spend": 17.03,
+       "impressions": 4549,
+       "clicks": 4,
+       "purchases": 0,
+       "revenue": 0.0,
+       "conversations": 0,
+       "profileVisits": 0,
+       "thruplays": 2328,
+       "url": "https://www.facebook.com/?feed_demo_ad=120236855310160345&h=AQInyZTeruNSFNsXlhtTxC0Nubw"
+      }
+     ]
+    }
+   ]
   },
   {
    "name": "Marzo",
