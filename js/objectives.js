@@ -7,21 +7,26 @@
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const SHORT_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const GROUP_CLASS = { Ventas: 'sales', Mensajes: 'messages', Reconocimiento: 'branding' };
-  const COLORS = { spend: '#2563eb', revenue: '#0d9488', costPerPurchase: '#db2777', costPerConversation: '#0f766e' };
-  const CHART_METRICS = {
-    spend: { label: 'Inversión y ventas', money: true, sub: 'Inversión en Meta Ads frente al valor de las compras atribuidas a los anuncios (S/.)', series: [['spend', 'Inversión'], ['revenue', 'Valor de compras']] },
-    purchases: { label: 'Compras', sub: 'Compras en la tienda online atribuidas a los anuncios (pixel de Meta)', series: [['purchases', 'Compras']] },
-    conversations: { label: 'Conversaciones', sub: 'Conversaciones de WhatsApp iniciadas desde los anuncios', series: [['conversations', 'Conversaciones']] },
-    clicks: { label: 'Clics en el enlace', sub: 'Clics en el enlace de todas las campañas', series: [['clicks', 'Clics en el enlace']] },
+  // Indicadores del grafico mensual. Se marcan varios y cada uno va en su panel, con la misma mecanica de los
+  // graficos de campana: nunca dos escalas sobre las mismas lineas, porque los cruces no significarian nada.
+  const MONTH_METRICS = [
+    { key: 'spend', label: 'Inversión', color: '#2563eb', unit: 'money' },
+    { key: 'revenue', label: 'Valor de compras', color: '#0d9488', unit: 'money' },
+    { key: 'purchases', label: 'Compras', color: '#2a8276', unit: 'count' },
+    { key: 'conversations', label: 'Conversaciones', color: '#16a34a', unit: 'count' },
+    { key: 'clicks', label: 'Clics en el enlace', color: '#7c3aed', unit: 'count' },
     // Costos por resultado: salen de sumar la inversion y los resultados de su tipo de campana en el mes (los
     // mismos de los KPIs); un mes sin compras o sin conversaciones queda como hueco.
-    costPerPurchase: { label: 'Costo por compra', money: true, cost: true, sub: 'Inversión de la campaña de Ventas / compras de cada mes (sin compras, hueco)', series: [['costPerPurchase', 'Costo por compra']] },
-    costPerConversation: { label: 'Costo por conversación', money: true, cost: true, sub: 'Inversión de la campaña de Mensajes / conversaciones de cada mes (sin conversaciones, hueco)', series: [['costPerConversation', 'Costo por conversación']] },
-  };
+    { key: 'costPerPurchase', label: 'Costo por compra', color: '#db2777', unit: 'money' },
+    { key: 'costPerConversation', label: 'Costo por conversación', color: '#d97706', unit: 'money' },
+  ];
+  const DEFAULT_MONTH_METRICS = ['spend', 'revenue'];
   // Grupo de campanas del que sale cada costo por resultado y su resultado.
   const COST_BASES = { costPerPurchase: ['Ventas', 'purchases'], costPerConversation: ['Mensajes', 'conversations'] };
   const CHART_COLLAPSED_KEY = 'tlm-chart-collapsed-v1';
+  // v1 guardaba un solo indicador (los botones eran excluyentes); v2 guarda los marcados y el "un solo cuadro".
   const CHART_METRIC_KEY = 'tlm-ads-chart-metric-v1';
+  const CHART_KEY = 'tlm-ads-chart-v2';
   // Web App de Apps Script (scripts/sync-trigger.gs) que lanza el workflow sync-ads-data.yml con un token
   // guardado en Apps Script: el tablero no lleva credenciales ni abre GitHub. Si quedara vacio, el boton solo
   // vuelve a leer los datos publicados por la sincronizacion automatica.
@@ -46,7 +51,7 @@
   const COMPARE_KEYS = KPI_DEFS.map(kpi => kpi.key);
   // Chart.js en Inter, como Royal Baby (ejes, tooltips y leyendas de los graficos del tablero).
   if (window.Chart?.defaults?.font) window.Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), campaignCharts: {}, campaignChartObjects: new Map(), dailyRaw: null, syncing: false, syncError: false, loadError: false, daily: null };
+  const state = { data: null, month: null, chart: null, group: 'all', monthChart: { metrics: DEFAULT_MONTH_METRICS, combined: false }, chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), campaignCharts: {}, campaignChartObjects: new Map(), dailyRaw: null, syncing: false, syncError: false, loadError: false, daily: null };
 
   function readPref(key, fallback) {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -293,42 +298,58 @@
     button.setAttribute('aria-expanded', String(!state.chartCollapsed));
     button.setAttribute('title', state.chartCollapsed ? 'Expandir gráfico' : 'Minimizar gráfico');
   }
+  // Ajustes del grafico mensual. La version anterior guardaba un solo indicador: se traduce al llegar.
+  function loadMonthChart() {
+    let saved = {};
+    try { saved = JSON.parse(readPref(CHART_KEY, '{}')) || {}; } catch { saved = {}; }
+    const metrics = MONTH_METRICS.map(item => item.key).filter(key => Array.isArray(saved.metrics) && saved.metrics.includes(key));
+    const old = readPref(CHART_METRIC_KEY, '');
+    // "Inversion y ventas" eran dos series en un boton; los demas botones, una sola.
+    const before = old && old !== 'spend' && MONTH_METRICS.some(item => item.key === old) ? [old] : DEFAULT_MONTH_METRICS;
+    state.monthChart = { metrics: metrics.length ? metrics : before, combined: saved.combined === true };
+  }
+  function saveMonthChart(changes) {
+    state.monthChart = { ...state.monthChart, ...changes };
+    savePref(CHART_KEY, JSON.stringify(state.monthChart));
+  }
   function renderChart() {
-    const metric = CHART_METRICS[state.metric] ? state.metric : 'spend';
-    const config = CHART_METRICS[metric];
-    document.getElementById('chart-title').textContent = `Evolución mensual · ${config.label} · 2026`;
-    document.getElementById('chart-sub').textContent = config.sub;
-    document.querySelectorAll('#chart-series-toggles .series-toggle').forEach(item => {
-      const active = item.dataset.series === metric;
-      item.classList.toggle('active', active);
-      item.querySelector('input').checked = active;
-    });
-    const color = key => COLORS[key] || COLORS.spend;
-    document.getElementById('chart-legend').innerHTML = config.series.map(([key, name]) => `<span><i class="legend-line" style="background:${color(key)}"></i><b>${esc(name)}</b></span>`).join(' ');
+    const chosen = MONTH_METRICS.filter(metric => state.monthChart.metrics.includes(metric.key));
+    const combined = state.monthChart.combined && chosen.length > 1;
+    document.getElementById('chart-title').textContent = 'Evolución mensual · 2026';
+    document.getElementById('chart-sub').textContent = `${chosen.map(metric => metric.label).join(' · ')}, mes a mes. Un clic en el gráfico abre ese mes.`;
+    document.getElementById('chart-series-toggles').innerHTML = MONTH_METRICS.map(metric => `
+      <label class="series-toggle ${state.monthChart.metrics.includes(metric.key) ? 'active' : ''}" style="--serie:${metric.color}">
+        <input type="checkbox" value="${metric.key}" ${state.monthChart.metrics.includes(metric.key) ? 'checked' : ''}>${esc(metric.label)}
+      </label>`).join('');
+    // Con un indicador no hay nada que juntar: el boton solo aparece con dos o mas.
+    document.getElementById('chart-modes').innerHTML = chosen.length > 1
+      ? `<button type="button" class="table-tool-btn ${combined ? 'active' : ''}" data-combined="1" aria-pressed="${combined}" title="Los indicadores marcados, juntos en un cuadro">Un solo cuadro</button>`
+      : '';
     if (state.chartCollapsed) return;
     const canvas = document.getElementById('chart-monthly');
     if (!canvas) return;
     if (typeof Chart === 'undefined') { canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Gráfico no disponible sin conexión.</strong><span>Los totales mensuales siguen visibles debajo.</span></div>'; return; }
+    // Cada panel pide su alto; en un solo cuadro van todos en uno.
+    const panels = chosen.length > 1 && !combined ? chosen.length : 1;
+    document.getElementById('monthly-chart-body').style.height = `${Math.max(300, panels * 160)}px`;
     const lastIndex = state.data.months.reduce((last, month, index) => hasData(month) ? index : last, 0);
     const months = state.data.months.slice(0, lastIndex + 1);
     const labels = SHORT_MONTHS.slice(0, lastIndex + 1).map((name, index) => months[index]?.status === 'parcial' ? `${name}*` : name);
-    const datasets = config.series.map(([key, name]) => ({
-      label: name,
-      data: months.map(month => chartValue(month, key)),
-      borderColor: color(key),
-      backgroundColor: color(key),
-      borderWidth: 2.5,
-      pointRadius: 5,
-      pointHoverRadius: 7,
-      tension: .3,
-      cubicInterpolationMode: 'monotone',
+    const datasets = chosen.map((metric, order) => ({
+      label: metric.label,
+      unit: metric.unit,
+      data: months.map(month => chartValue(month, metric.key)),
+      borderColor: metric.color,
+      backgroundColor: metric.color,
+      pointBackgroundColor: metric.color,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      tension: .25,
       spanGaps: false,
+      valueLabels: true,
+      yAxisID: chosen.length === 1 ? 'y' : `y${order}`,
     }));
-    const axis = { beginAtZero: true, grace: '15%', border: { display: false }, ticks: { color: '#94A3B8', font: { size: 10 } } };
-    const scales = {
-      x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#94A3B8', font: { size: 10 } } },
-      y: { ...axis, grid: { color: 'rgba(15,23,42,.06)' }, ticks: { ...axis.ticks, callback: value => (config.cost && Math.abs(value) < 10 ? fmtMoney(value) : fmtCompact(value, config.money)) } },
-    };
     if (state.chart) state.chart.destroy();
     state.chart = new Chart(canvas, {
       type: 'line',
@@ -336,64 +357,39 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
         interaction: { mode: 'index', intersect: false },
-        layout: { padding: { top: 22, right: 8, left: 4 } },
+        layout: { padding: { top: 24, right: 12, left: 4 } },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: {
-            title: items => { const month = months[items[0].dataIndex]; return `${month.name}${month.status === 'parcial' ? ` (parcial, ${month.period})` : month.notice ? ` (${month.notice.toLowerCase()})` : ''}`; },
-            label: context => context.raw == null ? ` ${context.dataset.label}: sin datos` : ` ${context.dataset.label}: ${config.cost ? fmtCost(context.raw) : config.money ? fmtMoney(context.raw) : fmtCount(context.raw)}`,
-            footer: items => {
-              const month = months[items[0].dataIndex];
-              return metric === 'spend' && hasData(month) ? `ROAS ${fmtRoas(ratio(month.kpis.revenue, month.kpis.spend))}` : '';
+          tooltip: {
+            filter: item => item.raw != null,
+            callbacks: {
+              title: items => { const month = months[items[0].dataIndex]; return `${month.name}${month.status === 'parcial' ? ` (parcial, ${month.period})` : month.notice ? ` (${month.notice.toLowerCase()})` : ''}`; },
+              label: context => ` ${context.dataset.label}: ${seriesValue(context.dataset.unit, context.raw)}`,
+              // El ROAS solo significa algo con la inversion y el valor de compras a la vista.
+              footer: items => {
+                const month = months[items[0].dataIndex];
+                const both = ['spend', 'revenue'].every(key => state.monthChart.metrics.includes(key));
+                return both && hasData(month) ? `ROAS ${fmtRoas(ratio(month.kpis.revenue, month.kpis.spend))}` : '';
+              },
             },
-          } },
+          },
         },
-        scales,
+        scales: {
+          x: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+          ...panelScales(chosen, combined),
+        },
         onClick: (event, elements) => { if (elements[0]) selectMonth(months[elements[0].index].name); },
       },
-      // Valor en cada punto, menos los ceros y los huecos. Va arriba en un pico y abajo en un valle, para no
-      // montarse en la linea, con halo blanco; si choca con otra etiqueta (inversion y valor de compras van en el
-      // mismo cuadro) o se sale del grafico prueba el otro lado y, si tampoco cabe, se omite (queda en el tooltip).
-      plugins: [{ id: 'valueLabels', afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        const placed = [];
-        const overlaps = box => placed.some(other => !(box.right < other.left || box.left > other.right || box.bottom < other.top || box.top > other.bottom));
-        const top = chart.chartArea.top - 20;
-        const bottom = chart.chartArea.bottom;
-        ctx.save();
-        ctx.font = '600 9px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(255,255,255,.92)';
-        chart.data.datasets.forEach((dataset, index) => {
-          ctx.fillStyle = dataset.backgroundColor;
-          chart.getDatasetMeta(index).data.forEach((dot, point) => {
-            const value = dataset.data[point];
-            if (!isNum(value) || Number(value) === 0) return;
-            // Soles sin decimales, salvo montos chicos (un costo de S/ 0.45 no debe leerse S/ 0).
-            const text = config.money && Math.abs(value) < 10 ? fmtCost(value) : fmtCompact(value, config.money);
-            const half = ctx.measureText(text).width / 2 + 2;
-            const before = dataset.data[point - 1];
-            const after = dataset.data[point + 1];
-            const valley = isNum(before) && isNum(after) && value < before && value < after;
-            const sides = valley ? [dot.y + 12, dot.y - 11] : [dot.y - 11, dot.y + 12];
-            // Pegada al borde, la etiqueta se corre hacia adentro para no cortarse.
-            const x = Math.min(Math.max(dot.x, half), chart.width - half);
-            const box = sides
-              .map(y => ({ y, left: x - half, right: x + half, top: y - 6, bottom: y + 6 }))
-              .find(item => item.top >= top && item.bottom <= bottom && !overlaps(item));
-            if (!box) return;
-            placed.push(box);
-            ctx.strokeText(text, x, box.y);
-            ctx.fillText(text, x, box.y);
-          });
-        });
-        ctx.restore();
-      } }],
+      plugins: LINE_PLUGINS,
     });
+    const note = document.getElementById('chart-note');
+    if (note) {
+      note.textContent = `${combined ? 'Los indicadores van juntos, cada uno con su escala y sin eje a la vista: se compara la forma y el valor se lee en el punto.'
+        : chosen.length > 1 ? 'Cada indicador en su panel, con su escala, sobre el mismo eje de meses.'
+          : 'Marca más indicadores para verlos en paneles apilados.'} El asterisco marca un mes parcial.`;
+    }
   }
   // Valor de un indicador del grafico en un mes; sin hoja del mes, hueco. Los costos, de las sumas de su tipo de
   // campana (sin resultados, hueco).
@@ -476,28 +472,32 @@
     const branding = groupTotals([month], 'Reconocimiento');
     const metrics = [
       ['Compras', fmtCount(k.purchases), sales.purchases ? `${fmtMoney(ratio(sales.spend, sales.purchases))} por compra en Ventas` : 'Sin compras atribuidas'],
-      ['Valor de compras', fmtMoney(k.revenue), `ROAS ${fmtRoas(ratio(k.revenue, k.spend))} total | ${fmtRoas(ratio(sales.revenue, sales.spend))} en Ventas`],
-      ['Conversaciones', fmtCount(k.conversations), `${fmtCost(ratio(messages.spend, messages.conversations))} c/u en Mensajes | ${fmtCount(k.profileVisits)} visitas al perfil`],
-      ['ThruPlays', fmtCount(k.thruplays), `${fmtCost(ratio(branding.spend, branding.thruplays))} c/u | ${fmtCompact(branding.impressions, false)} impresiones de Reconocimiento`],
+      ['Valor de compras', fmtMoney(k.revenue), `ROAS ${fmtRoas(ratio(k.revenue, k.spend))} total · ${fmtRoas(ratio(sales.revenue, sales.spend))} en Ventas`],
+      ['Conversaciones', fmtCount(k.conversations), `${fmtCost(ratio(messages.spend, messages.conversations))} c/u en Mensajes · ${fmtCount(k.profileVisits)} visitas al perfil`],
+      ['ThruPlays', fmtCount(k.thruplays), `${fmtCost(ratio(branding.spend, branding.thruplays))} c/u · ${fmtCompact(branding.impressions, false)} impresiones de Reconocimiento`],
     ];
     const groups = Object.entries(month.spendByGroup || {}).sort((a, b) => b[1] - a[1]);
     const bar = groups.map(([group, value]) => `<i class="${GROUP_CLASS[group] || ''}" style="width:${(value / k.spend * 100).toFixed(2)}%" title="${esc(group)}: ${fmtMoney(value)}"></i>`).join('');
     const legend = groups.map(([group, value]) => `<span><i class="${GROUP_CLASS[group] || ''}"></i>${esc(group)} <b>${fmtMoney(value)}</b> <em>${fmtPct(value / k.spend * 100)}</em></span>`).join('');
+    // Mismo marco y mismas tarjetas que los cuadros de campana: tarjeta blanca de borde fino y KPIs en kpi-pill.
     return `
-      <div class="panel ads-platform-card meta">
-        <div class="ads-platform-head">
-          <div><span class="platform-pill meta">${esc(state.data.platform.label)}</span><div class="panel-sub">${esc(state.data.platform.currency)} | ${month.campaigns.length} campañas | ${fmtCount(k.impressions)} impresiones</div></div>
-          <div class="ads-platform-spend"><span>Inversión</span><strong>${fmtMoney(k.spend)}</strong></div>
+      <section class="campaign-block platform-block">
+        <div class="campaign-block-head">
+          <div>
+            <div class="campaign-block-title">${esc(state.data.platform.label)} <span class="platform-pill meta">Resumen</span></div>
+            <div class="campaign-block-sub">${esc(state.data.platform.currency)} · ${month.campaigns.length} campañas · ${fmtCount(k.impressions)} impresiones</div>
+          </div>
+          <div class="block-figure"><span>Inversión</span><strong>${fmtMoney(k.spend)}</strong></div>
         </div>
-        <div class="ads-platform-metrics cols-2">${metrics.map(([name, value, hint]) => `<div><span>${name}</span><strong>${value}</strong><small>${esc(hint)}</small></div>`).join('')}</div>
+        <div class="kpi-strip campaign-kpis">${metrics.map(([name, value, hint]) => `<div class="kpi-pill"><span>${name}</span><strong>${value}</strong><small>${esc(hint)}</small></div>`).join('')}</div>
         <div class="ads-split"><div class="ads-split-bar">${bar}</div><div class="ads-split-legend">${legend}</div></div>
-      </div>`;
+      </section>`;
   }
   // Embudo de la campana de Ventas: de la impresion a la compra en la tienda online.
   function funnelCard(month) {
     const sales = groupTotals([month], 'Ventas');
     if (!sales.spend) {
-      return '<div class="panel ads-platform-card funnel empty"><div class="ads-platform-head"><span class="platform-pill sales">Embudo de compra</span></div><div class="empty-state"><strong>Sin campaña de Ventas</strong><span>Este mes no hubo inversión en la campaña de Ventas.</span></div></div>';
+      return '<section class="campaign-block platform-block funnel empty"><div class="campaign-block-head"><div><div class="campaign-block-title">Embudo de compra</div></div></div><div class="empty-state"><strong>Sin campaña de Ventas</strong><span>Este mes no hubo inversión en la campaña de Ventas.</span></div></section>';
     }
     const steps = [
       ['Impresiones', sales.impressions],
@@ -515,14 +515,17 @@
       return `<div class="funnel-step"><span class="funnel-name">${name}</span><div class="funnel-bar"><i style="width:${width.toFixed(1)}%"></i></div><strong>${fmtCount(value)}</strong><small>${index ? `${fmtPct(rate)} del paso anterior` : 'Base'}</small></div>`;
     }).join('');
     return `
-      <div class="panel ads-platform-card funnel">
-        <div class="ads-platform-head">
-          <div><span class="platform-pill sales">Embudo de compra</span><div class="panel-sub">Solo la campaña de Ventas | conversión de la impresión a la compra</div></div>
-          <div class="ads-platform-spend"><span>Costo por compra</span><strong>${fmtMoney(ratio(sales.spend, sales.purchases))}</strong></div>
+      <section class="campaign-block platform-block funnel">
+        <div class="campaign-block-head">
+          <div>
+            <div class="campaign-block-title">Embudo de compra <span class="platform-pill sales">Ventas</span></div>
+            <div class="campaign-block-sub">Solo la campaña de Ventas · conversión de la impresión a la compra</div>
+          </div>
+          <div class="block-figure"><span>Costo por compra</span><strong>${fmtMoney(ratio(sales.spend, sales.purchases))}</strong></div>
         </div>
         <div class="funnel-steps">${rows}</div>
-        <div class="funnel-foot">Inversión ${fmtMoney(sales.spend)} | valor de compras ${fmtMoney(sales.revenue)} | ROAS ${fmtRoas(ratio(sales.revenue, sales.spend))}</div>
-      </div>`;
+        <div class="funnel-foot">Inversión ${fmtMoney(sales.spend)} · valor de compras ${fmtMoney(sales.revenue)} · ROAS ${fmtRoas(ratio(sales.revenue, sales.spend))}</div>
+      </section>`;
   }
   // ── Campanas, un marco cada una ───────────────────────────────────────────
   // La estructura del tablero de Terminal Pesquero: en vez de una fila por campana, un cuadro por campana
@@ -783,10 +786,101 @@
     ? (value === 0 ? `${symbol()} 0` : `${symbol()} ${Number(value).toLocaleString('es-PE', { maximumFractionDigits: Math.abs(value) >= 10 ? 0 : Math.abs(value) >= 1 ? 2 : 3 })}`)
     : Number(value).toLocaleString('es-PE', { notation: Math.abs(value) >= 100000 ? 'compact' : 'standard', maximumFractionDigits: 1 }));
 
+  // Los tres anadidos que comparten los graficos de linea del tablero: el valor sobre cada punto, el
+  // nombre de cada panel y la linea vertical del tooltip.
+  const LINE_PLUGINS = [{
+        // El valor de cada punto, menos los ceros. Arriba en un pico y abajo en un valle, para no montarse
+        // en la linea; si choca con otra etiqueta o se sale de su panel, prueba el otro lado y si tampoco
+        // cabe se omite y queda en el tooltip.
+        id: 'valueLabels',
+        afterDatasetsDraw(target) {
+          const ctx = target.ctx;
+          const placed = [];
+          const overlaps = box => placed.some(other => !(box.right < other.left || box.left > other.right || box.bottom < other.top || box.top > other.bottom));
+          const isValue = value => value != null && Number.isFinite(Number(value));
+          ctx.save();
+          ctx.font = '600 11px Inter, sans-serif';
+          Object.values(target.scales).forEach(scale => {
+            if (!scale.options.panelLabel) return;
+            const left = target.chartArea.left + 4;
+            placed.push({ left, right: left + ctx.measureText(scale.options.panelLabel).width + 8, top: scale.top + 2, bottom: scale.top + 18 });
+          });
+          ctx.font = '600 10px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(255,255,255,.92)';
+          target.data.datasets.forEach((dataset, order) => {
+            if (!dataset.valueLabels) return;
+            const meta = target.getDatasetMeta(order);
+            const scale = target.scales[meta.yAxisID];
+            if (!scale) return;
+            const top = scale.top <= target.chartArea.top + 1 ? target.chartArea.top - 22 : scale.top;
+            ctx.fillStyle = dataset.borderColor;
+            meta.data.forEach((point, pointIndex) => {
+              const raw = dataset.data[pointIndex];
+              if (!isValue(raw) || Number(raw) === 0) return;
+              const text = pointValue(dataset.unit, raw);
+              const half = ctx.measureText(text).width / 2 + 2;
+              const prev = dataset.data[pointIndex - 1];
+              const next = dataset.data[pointIndex + 1];
+              const valley = isValue(prev) && isValue(next) && raw < prev && raw < next;
+              const sides = valley ? [point.y + 13, point.y - 12] : [point.y - 12, point.y + 13];
+              const x = Math.min(Math.max(point.x, half), target.width - half);
+              const box = sides.map(y => ({ y, left: x - half, right: x + half, top: y - 6, bottom: y + 6 }))
+                .find(item => item.top >= top && item.bottom <= scale.bottom && !overlaps(item));
+              if (!box) return;
+              placed.push(box);
+              ctx.strokeText(text, x, box.y);
+              ctx.fillText(text, x, box.y);
+            });
+          });
+          ctx.restore();
+        },
+      }, {
+        // El nombre de cada panel, arriba a la izquierda y en horizontal (solo con varios indicadores).
+        id: 'panelLabels',
+        afterDatasetsDraw(target) {
+          const ctx = target.ctx;
+          ctx.save();
+          ctx.font = '600 11px Inter, sans-serif';
+          ctx.textBaseline = 'top';
+          Object.values(target.scales).forEach(scale => {
+            const label = scale.options.panelLabel;
+            if (!label) return;
+            const x = target.chartArea.left + 8;
+            const y = scale.top + 4;
+            ctx.fillStyle = 'rgba(255,255,255,.85)';
+            ctx.fillRect(x - 4, y - 2, ctx.measureText(label).width + 8, 16);
+            ctx.fillStyle = '#475569';
+            ctx.fillText(label, x, y);
+          });
+          ctx.restore();
+        },
+      }, {
+        // Linea vertical en el dia del tooltip, a lo alto de todos los paneles.
+        id: 'crosshair',
+        afterDatasetsDraw(target) {
+          const active = target.tooltip?.getActiveElements() || [];
+          if (!active.length) return;
+          const ctx = target.ctx;
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(active[0].element.x, target.chartArea.top);
+          ctx.lineTo(active[0].element.x, target.chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        },
+      }];
+
   // Con un indicador, un solo eje. Con varios, un panel por indicador apilado sobre el mismo eje de dias:
   // nunca dos escalas a la vista sobre las mismas lineas, porque los cruces no significarian nada. En "un
   // solo cuadro" cada indicador conserva su escala pero sin eje visible: se compara la forma.
-  function campaignScales(metrics, combined) {
+  function panelScales(metrics, combined) {
     const base = unit => ({ beginAtZero: true, border: { display: false },
       ticks: { color: '#94a3b8', font: { size: 10 }, callback: value => tickValue(unit, value) } });
     if (metrics.length === 1) return { y: { ...base(metrics[0].unit), grid: { color: 'rgba(15,23,42,.06)' } } };
@@ -884,97 +978,10 @@
         scales: {
           x: { grid: { display: false }, border: { color: '#cbd5e1' },
                ticks: { color: '#94a3b8', font: { size: 10 }, autoSkip: true, maxTicksLimit: useDaily ? 16 : 12 } },
-          ...campaignScales(chosen, combined),
+          ...panelScales(chosen, combined),
         },
       },
-      plugins: [{
-        // El valor de cada punto, menos los ceros. Arriba en un pico y abajo en un valle, para no montarse
-        // en la linea; si choca con otra etiqueta o se sale de su panel, prueba el otro lado y si tampoco
-        // cabe se omite y queda en el tooltip.
-        id: 'valueLabels',
-        afterDatasetsDraw(target) {
-          const ctx = target.ctx;
-          const placed = [];
-          const overlaps = box => placed.some(other => !(box.right < other.left || box.left > other.right || box.bottom < other.top || box.top > other.bottom));
-          const isValue = value => value != null && Number.isFinite(Number(value));
-          ctx.save();
-          ctx.font = '600 11px Inter, sans-serif';
-          Object.values(target.scales).forEach(scale => {
-            if (!scale.options.panelLabel) return;
-            const left = target.chartArea.left + 4;
-            placed.push({ left, right: left + ctx.measureText(scale.options.panelLabel).width + 8, top: scale.top + 2, bottom: scale.top + 18 });
-          });
-          ctx.font = '600 10px Inter, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.lineJoin = 'round';
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = 'rgba(255,255,255,.92)';
-          target.data.datasets.forEach((dataset, order) => {
-            if (!dataset.valueLabels) return;
-            const meta = target.getDatasetMeta(order);
-            const scale = target.scales[meta.yAxisID];
-            if (!scale) return;
-            const top = scale.top <= target.chartArea.top + 1 ? target.chartArea.top - 22 : scale.top;
-            ctx.fillStyle = dataset.borderColor;
-            meta.data.forEach((point, pointIndex) => {
-              const raw = dataset.data[pointIndex];
-              if (!isValue(raw) || Number(raw) === 0) return;
-              const text = pointValue(dataset.unit, raw);
-              const half = ctx.measureText(text).width / 2 + 2;
-              const prev = dataset.data[pointIndex - 1];
-              const next = dataset.data[pointIndex + 1];
-              const valley = isValue(prev) && isValue(next) && raw < prev && raw < next;
-              const sides = valley ? [point.y + 13, point.y - 12] : [point.y - 12, point.y + 13];
-              const x = Math.min(Math.max(point.x, half), target.width - half);
-              const box = sides.map(y => ({ y, left: x - half, right: x + half, top: y - 6, bottom: y + 6 }))
-                .find(item => item.top >= top && item.bottom <= scale.bottom && !overlaps(item));
-              if (!box) return;
-              placed.push(box);
-              ctx.strokeText(text, x, box.y);
-              ctx.fillText(text, x, box.y);
-            });
-          });
-          ctx.restore();
-        },
-      }, {
-        // El nombre de cada panel, arriba a la izquierda y en horizontal (solo con varios indicadores).
-        id: 'panelLabels',
-        afterDatasetsDraw(target) {
-          const ctx = target.ctx;
-          ctx.save();
-          ctx.font = '600 11px Inter, sans-serif';
-          ctx.textBaseline = 'top';
-          Object.values(target.scales).forEach(scale => {
-            const label = scale.options.panelLabel;
-            if (!label) return;
-            const x = target.chartArea.left + 8;
-            const y = scale.top + 4;
-            ctx.fillStyle = 'rgba(255,255,255,.85)';
-            ctx.fillRect(x - 4, y - 2, ctx.measureText(label).width + 8, 16);
-            ctx.fillStyle = '#475569';
-            ctx.fillText(label, x, y);
-          });
-          ctx.restore();
-        },
-      }, {
-        // Linea vertical en el dia del tooltip, a lo alto de todos los paneles.
-        id: 'crosshair',
-        afterDatasetsDraw(target) {
-          const active = target.tooltip?.getActiveElements() || [];
-          if (!active.length) return;
-          const ctx = target.ctx;
-          ctx.save();
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 3]);
-          ctx.beginPath();
-          ctx.moveTo(active[0].element.x, target.chartArea.top);
-          ctx.lineTo(active[0].element.x, target.chartArea.bottom);
-          ctx.stroke();
-          ctx.restore();
-        },
-      }],
+      plugins: LINE_PLUGINS,
     });
     state.campaignChartObjects.set(campaign.name, chart);
     if (note) {
@@ -1288,11 +1295,18 @@
     try { state.campaignCharts = JSON.parse(readPref(CAMPAIGN_CHART_KEY, '{}')) || {}; } catch { state.campaignCharts = {}; }
   }
   function wireEvents() {
+    // Un indicador sin marcar deja el cuadro vacio: se exige al menos uno, como en los cuadros de campana.
     document.getElementById('chart-series-toggles').addEventListener('change', event => {
-      const input = event.target.closest('input[type="radio"]');
+      const input = event.target.closest('input[type="checkbox"]');
       if (!input) return;
-      state.metric = input.value;
-      savePref(CHART_METRIC_KEY, state.metric);
+      const metrics = [...document.querySelectorAll('#chart-series-toggles input:checked')].map(item => item.value);
+      if (!metrics.length) { input.checked = true; return; }
+      saveMonthChart({ metrics });
+      renderChart();
+    });
+    document.getElementById('chart-modes').addEventListener('click', event => {
+      if (!event.target.closest('[data-combined]')) return;
+      saveMonthChart({ combined: !state.monthChart.combined });
       renderChart();
     });
     document.getElementById('chart-toggle-btn').addEventListener('click', () => {
@@ -1361,6 +1375,7 @@
       state.dailyRaw = await dailyRequest;
       state.daily = dailyTotals(state.dailyRaw);
       loadCampaignCharts();
+      loadMonthChart();
       wireEvents();
       wireStatusCard();
       renderAll();

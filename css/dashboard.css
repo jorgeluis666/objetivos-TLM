@@ -719,68 +719,6 @@
   margin-bottom: 14px;
 }
 
-.ads-platform-card .empty-state { min-height: 160px; margin-top: 12px; }
-
-.ads-platform-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ads-platform-head .platform-pill { font-size: 11px; }
-
-.ads-platform-spend { text-align: right; }
-
-.ads-platform-spend span,
-.ads-platform-metrics span {
-  display: block;
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-.ads-platform-spend strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -.02em;
-  white-space: nowrap;
-}
-
-.ads-platform-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 16px 0 14px;
-}
-
-.ads-platform-metrics.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.ads-platform-metrics.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-.ads-platform-metrics > div {
-  padding: 10px;
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.ads-platform-metrics strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.ads-platform-metrics small {
-  display: block;
-  margin-top: 4px;
-  color: #94a3b8;
-  font-size: 9px;
-}
-
 .ads-split-bar {
   display: flex;
   height: 8px;
@@ -866,7 +804,6 @@
 }
 
 @media(max-width:760px) {
-  .ads-platform-metrics.cols-3 { grid-template-columns: minmax(0, 1fr); }
   .ads-month-bar { align-items: flex-start; flex-direction: column; }
 }
 
@@ -2514,3 +2451,42 @@ body.ads-table-full { overflow: hidden; }
 .campaign-chart-modes .table-tool-btn.active { border-color: var(--brand-border); color: var(--brand-text); background: var(--brand-soft); }
 .h-220 { height: 220px; }
 .campaign-chart-note { margin-top: 8px; color: #7b8da6; font-size: 11px; line-height: 1.5; }
+
+/* Resumen del periodo y embudo con el marco y las tarjetas de los cuadros de campaña (v1.10.0) */
+.ads-platforms .campaign-block { display: flex; flex-direction: column; }
+.platform-block .campaign-block-title .platform-pill { margin-left: 6px; vertical-align: 1px; }
+/* Dos columnas fijas: con auto-fit los cuatro indicadores caían 3 + 1 y dejaban un hueco. */
+.platform-block .campaign-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media(max-width:620px) { .platform-block .campaign-kpis { grid-template-columns: minmax(0, 1fr); } }
+.platform-block .ads-split { margin-top: auto; padding-top: 12px; }
+.platform-block .empty-state { min-height: 160px; margin-top: 12px; }
+.platform-block .funnel-steps { margin-top: 18px; }
+
+/* Cifra a la derecha de la cabecera, con el número en el estándar de las tarjetas KPI. */
+.block-figure { flex-shrink: 0; text-align: right; }
+
+.block-figure span {
+  display: block;
+  color: #7b8da6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.block-figure strong {
+  display: block;
+  margin-top: 6px;
+  color: #06132b;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Los indicadores del gráfico mensual son los mismos botones de los cuadros de campaña y van en su propia
+   fila, debajo del título: en la cabecera empujaban el texto y se partían en tres líneas. */
+.chart-panel .campaign-chart-head { margin: -4px 0 12px; }
+.chart-panel .campaign-chart-note { margin-top: 10px; }
+.chart-panel.is-collapsed .campaign-chart-head,
+.chart-panel.is-collapsed .campaign-chart-note { display: none; }
