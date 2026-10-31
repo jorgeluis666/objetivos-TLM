@@ -29,7 +29,7 @@ import re
 import sys
 import unicodedata
 import warnings
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import openpyxl
 
@@ -298,6 +298,12 @@ def failed_downloads(drive):
     return [(folder, item) for folder, info in manifest.items() for item in info.get('files', []) if item.get('error')]
 
 
+def lima_today():
+    """Hoy en Lima (UTC-5). El barrido corre en UTC: a las 7 de la tarde de Lima alla ya es el dia siguiente,
+    y el 31 a esa hora octubre pasaria por mes pasado."""
+    return (datetime.now(timezone.utc) - timedelta(hours=5)).date()
+
+
 def short(day):
     return f'{day.day}/{day.month:02d}'
 
@@ -411,8 +417,11 @@ def build(drive):
         month = months[index]
         days_in_month = calendar.monthrange(YEAR, index + 1)[1]
         last = int(month['lastDay'][8:10])
-        # Un mes con datos posteriores esta cerrado; el ultimo, si llega al penultimo dia (la pauta pudo terminar antes).
-        closed = index < with_data[-1] or last >= days_in_month - 1
+        # Un mes con datos posteriores esta cerrado; el ultimo, si llega al penultimo dia (la pauta pudo
+        # terminar antes). El mes en curso nunca: con datos del dia 30 daria por cerrado octubre entero,
+        # y el tablero diria "1 - 31" y compararia contra septiembre completo estando a 30.
+        running = (YEAR, index + 1) == (lima_today().year, lima_today().month)
+        closed = index < with_data[-1] or (last >= days_in_month - 1 and not running)
         end = days_in_month if closed else last
         month['status'] = 'cerrado' if closed else 'parcial'
         month['period'] = f'1 - {end} {month["name"]} {YEAR}'

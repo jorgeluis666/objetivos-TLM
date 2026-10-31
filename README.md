@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.6.0`.
+Version actual: `v1.6.1`.
 
 ## Versionado
 
@@ -79,7 +79,10 @@ sexo y anuncio; importes en PEN).
 - ROAS total = valor de compras / inversion de todas las campanas. ROAS de Ventas = lo mismo, solo con la
   campana de Ventas. Costo por compra = inversion de Ventas / compras de Ventas.
 - Un mes esta cerrado si hay datos de un mes posterior o si llega al penultimo dia; si no, es parcial y su
-  ultimo dia con inversion es la fecha de corte.
+  ultimo dia con inversion es la fecha de corte. **El mes en curso nunca se da por cerrado** (v1.6.1): con
+  datos del dia 30, la regla del penultimo dia daba octubre entero por cerrado y el tablero decia
+  "Periodo: 1 - 31 Octubre" estando a 30, comparando ademas contra septiembre completo. "Hoy" se calcula
+  en Lima, no en UTC, porque el barrido corre en UTC y de noche alla ya es el dia siguiente.
 
 ### La pestana "Nexus Meta" (desde la v1.6.0)
 
