@@ -12,6 +12,9 @@ Reglas:
     una copia del mes anterior), el mes queda sin datos y se avisa en "warnings".
   - Grupos de campana: Ventas (objetivo Ventas: compras en la web), Mensajes (WhatsApp y visitas al perfil
     de Instagram) y Reconocimiento (resultado ThruPlay).
+  - Si la hoja trae ademas la pestana "Nexus Meta" (contrato NEXUS_META_V1), sus filas de nivel anuncio
+    completan los dias que la exportacion todavia no cubre. Nunca reemplazan un dia ya exportado, y ese
+    contrato trae menos columnas: lo que no manda queda en cero y el mes lo dice en "nexus".
 
 Uso:
   python scripts/build-ads-data.py [--root "G:/Mi unidad/.../The Little Market"]
@@ -56,6 +59,20 @@ COLUMNS = {
     'conversaciones con mensajes iniciadas': 'conversations', 'tipo de resultado': 'resultType', 'resultados': 'results',
     'enlace de vista previa': 'preview', 'nombre de la campana': 'campaign', 'edad': 'age', 'sexo': 'sex',
 }
+NEXUS_MARK = 'NEXUS_META_V1'
+# Cabecera de la pestana que escribe Nexus -> clave interna. Las cinco ultimas solo llegan si su destino
+# tiene activado "extended_fields"; sin ellas no hay alcance ni ThruPlays de esos dias.
+NEXUS_COLUMNS = {
+    'level': 'level', 'day': 'day', 'name': 'ad', 'campaign': 'campaign', 'spend': 'spend',
+    'impressions': 'impressions', 'inline_link_clicks': 'clicks', 'purchases': 'purchases',
+    'purchase_value': 'revenue', 'messages': 'conversations',
+    'reach': 'reach', 'objective': 'objective', 'result_type': 'resultType', 'results': 'results',
+}
+# Nexus guarda el indicador crudo de Meta; la exportacion trae el nombre en espanol que mira add().
+NEXUS_RESULTS = (('thruplay', 'ThruPlay'), ('messaging_conversation', 'Conversaciones con mensajes iniciadas'),
+                 ('profile_visit', 'Visitas al perfil de Instagram'), ('purchase', 'Compras en el sitio web'))
+# Lo que ese contrato no trae nunca; el alcance solo llega si el destino tiene "extended_fields".
+NEXUS_ABSENT = ('embudo', 'desglose por edad', 'vista previa')
 SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
           'conversations', 'interactions']
 METRICS = SUMMED + ['profileVisits', 'thruplays']
@@ -132,6 +149,20 @@ def is_month_name(file_name, month):
 
 def read_rows(path):
     book = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        records = export_rows(book, path)
+    except ValueError:
+        # Un mes recien creado puede tener solo la pestana de Nexus, sin exportacion todavia.
+        if nexus_sheet(book) is None:
+            book.close()
+            raise
+        records = []
+    records += nexus_rows(book, {row['day'] for row in records})
+    book.close()
+    return records
+
+
+def export_rows(book, path):
     sheet = book['Raw Data Report'] if 'Raw Data Report' in book.sheetnames else book.worksheets[0]
     rows = sheet.iter_rows(values_only=True)
     keys, currency = [], None
@@ -152,7 +183,46 @@ def read_rows(path):
         row['campaign'] = str(row.get('campaign') or '').strip()
         if row['day'] and row['campaign']:
             records.append(row)
-    book.close()
+    return records
+
+
+def nexus_sheet(book):
+    """Pestana que escribe Nexus en la hoja del mes: se reconoce por el contrato de su primera celda."""
+    for sheet in book.worksheets:
+        for values in sheet.iter_rows(min_row=1, max_row=1, values_only=True):
+            if values and norm(values[0]) == norm(NEXUS_MARK):
+                return sheet
+    return None
+
+
+def result_type_of(indicator):
+    text = norm(indicator)
+    return next((label for needle, label in NEXUS_RESULTS if needle in text), '')
+
+
+def nexus_rows(book, exported):
+    """Filas de nivel anuncio de la pestana de Nexus, solo de los dias que la exportacion no trae.
+
+    Un dia ya exportado manda siempre: sus filas son mas ricas y mezclar los dos origenes en el mismo dia
+    duplicaria el gasto. Edad y sexo van como "Unknown", que es la etiqueta de Meta para lo que no sabe y
+    la que el reporte semanal ya descarta al elegir su segmento."""
+    sheet = nexus_sheet(book)
+    if sheet is None:
+        return []
+    rows = sheet.iter_rows(min_row=2, values_only=True)
+    keys = [NEXUS_COLUMNS.get(norm(cell)) for cell in next(rows, None) or []]
+    if 'day' not in keys or 'spend' not in keys or 'campaign' not in keys:
+        return []
+    records = []
+    for values in rows:
+        row = {key: value for key, value in zip(keys, values) if key}
+        row['day'] = to_date(row.get('day'))
+        row['campaign'] = str(row.get('campaign') or '').strip()
+        if norm(row.pop('level', '')) != 'ad' or not row['day'] or not row['campaign'] or row['day'] in exported:
+            continue
+        row['age'], row['sex'], row['nexus'] = 'Unknown', 'unknown', True
+        row['resultType'] = result_type_of(row.get('resultType'))
+        records.append(row)
     return records
 
 
@@ -307,6 +377,15 @@ def build(drive):
         campaigns = campaigns_of(inside)
         if not campaigns:
             continue
+        from_nexus = [row for row in inside if row.get('nexus')]
+        if from_nexus:
+            # Esos dias no suman embudo ni alcance: el tablero lo dice en la linea de fuente.
+            nexus_days = sorted({row['day'] for row in from_nexus})
+            missing = list(NEXUS_ABSENT)
+            if not any(num(row.get('reach')) for row in from_nexus):
+                missing.insert(0, 'alcance')
+            entry['nexus'] = {'from': nexus_days[0].isoformat(), 'to': nexus_days[-1].isoformat(),
+                              'days': len(nexus_days), 'missing': missing}
         totals = zero()
         for row in inside:
             add(totals, row)

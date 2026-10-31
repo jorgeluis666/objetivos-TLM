@@ -38,6 +38,9 @@
   const SYNC_TIMEOUT_MS = 10 * 60 * 1000;
   // La sincronizacion corre tres veces al dia: mas de un dia sin datos nuevos pone la pildora en aviso.
   const STALE_MS = 26 * 3600000;
+  // Dias de atraso del corte a partir de los cuales la pildora avisa: Meta cierra el dia anterior, asi que
+  // dos dias es lo normal y tres significa que la carpeta de Drive dejo de moverse.
+  const STALE_DATA_DAYS = 2;
   // Indicadores de Gasto con variacion contra el mes anterior: la inversion es neutra; en los demas, subir es bueno.
   const KPI_DEFS = [
     { key: 'spend', label: 'Inversión Meta Ads', name: 'inversión', money: true, better: null },
@@ -459,7 +462,10 @@
       sub = period.compare ? `Comparación vs ${period.compare.label}` : 'Sin mes anterior para comparar';
       const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
       const daily = period.compare?.real.length ? `${MONTHS[period.index - 1]} del informe por día` : '';
-      source = [`Fuente: ${month.sheet ? `hoja "${month.sheet.title}"` : 'exportación de Meta Ads'}`, days, campaigns, daily];
+      // Días que la exportación todavía no cubre y completa la pestaña de Nexus, con lo que ese origen no trae.
+      const nexus = month.nexus ? `del ${longDate(month.nexus.from)} al ${longDate(month.nexus.to)} desde Nexus `
+        + `(sin ${month.nexus.missing.join(', ')})` : '';
+      source = [`Fuente: ${month.sheet ? `hoja "${month.sheet.title}"` : 'exportación de Meta Ads'}`, days, campaigns, daily, nexus];
     }
     document.getElementById('period-title').textContent = title;
     document.getElementById('period-sub').textContent = sub;
@@ -652,6 +658,23 @@
     const day = `${date.getDate()} ${SHORT_MONTHS[date.getMonth()].toLowerCase()}`;
     return syncStamp(data).length === 10 ? `Última sincronización: ${day}` : `Última sincronización: ${day}, ${date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
   }
+  // Hasta que dia llegan los datos y cuantos dias lleva parado. Sincronizar y traer datos nuevos no son
+  // lo mismo: la carpeta de Drive puede no haberse movido aunque el barrido corra tres veces al dia.
+  function cutoffDay(data) {
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data?.cutoff || '');
+    return parts ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])) : null;
+  }
+  function cutoffLag(data) {
+    const day = cutoffDay(data);
+    if (!day) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((today - day) / 86400000);
+  }
+  function cutoffLabel(data) {
+    const day = cutoffDay(data);
+    return day ? `${day.getDate()} de ${MONTHS[day.getMonth()].toLowerCase()}` : '';
+  }
   function relativeTime(date) {
     const minutes = Math.round((Date.now() - date.getTime()) / 60000);
     if (minutes < 1) return 'hace segundos';
@@ -661,20 +684,24 @@
     return `hace ${Math.round(hours / 24)} d`;
   }
   // Pildora de la barra superior como Royal Baby, igual en todas las vistas. ok: "Sincronizado · hace 2 h";
-  // cargando: "Recargando…" mientras corre Actualizar; aviso: avisos de la carpeta de Drive o mas de un dia sin
-  // sincronizar; error: no se pudieron leer los datos o lanzar la sincronizacion (el detalle va en la tarjeta).
+  // cargando: "Recargando…" mientras corre Actualizar; aviso: avisos de la carpeta de Drive, mas de un dia sin
+  // sincronizar o datos parados (entonces manda el corte, que es lo que de verdad ve el cliente); error: no se
+  // pudieron leer los datos o lanzar la sincronizacion (el detalle va en la tarjeta).
   function renderPill() {
     const pill = document.getElementById('data-status-btn');
     const label = document.getElementById('topbar-status');
     if (!pill || !label) return;
     const date = syncDate(state.data);
-    const warned = Boolean(state.data?.warnings?.length) || !date || Date.now() - date.getTime() > STALE_MS;
+    const lag = cutoffLag(state.data);
+    const behind = lag !== null && lag > STALE_DATA_DAYS;
+    const warned = Boolean(state.data?.warnings?.length) || !date || Date.now() - date.getTime() > STALE_MS || behind;
     const tone = state.syncing ? 'loading' : state.loadError || state.syncError ? 'err' : warned ? 'warn' : 'ok';
     ['ok', 'loading', 'warn', 'err'].forEach(name => pill.classList.toggle(name, name === tone));
     label.textContent = state.syncing ? 'Recargando…'
       : state.loadError ? 'No se pudieron cargar los datos'
         : state.syncError ? 'No se pudo sincronizar'
-          : date ? `Sincronizado · ${relativeTime(date)}` : 'Aún no sincronizado';
+          : behind ? `Datos al ${cutoffLabel(state.data)}`
+            : date ? `Sincronizado · ${relativeTime(date)}` : 'Aún no sincronizado';
   }
   // Boton fantasma "Actualizar": el icono gira y el texto cambia mientras corre.
   function setSyncBusy(busy) {
@@ -701,9 +728,11 @@
   }
   function renderStatus() {
     const set = (id, text) => { const node = document.getElementById(id); if (node) node.textContent = text; };
-    const cutoff = /^(\d{4})-(\d{2})-(\d{2})$/.exec(state.data.cutoff || '');
+    const label = cutoffLabel(state.data);
+    const lag = cutoffLag(state.data);
     const last = [...state.data.months].reverse().find(hasData);
-    set('status-data', cutoff ? `Meta Ads al ${Number(cutoff[3])} de ${MONTHS[Number(cutoff[2]) - 1].toLowerCase()}` : '—');
+    // Cuando el corte se queda atras lo dice aqui tambien, para que no haya que restar fechas a ojo.
+    set('status-data', label ? `Meta Ads al ${label}${lag > STALE_DATA_DAYS ? ` (hace ${lag} días)` : ''}` : '—');
     set('status-last', syncLabel(state.data).replace('Última sincronización: ', '') || '—');
     set('status-next', nextAutoSync());
     set('status-file', last?.sheet?.title || '—');

@@ -4,7 +4,7 @@ Dashboard de Agencia Lima Retail para controlar la inversion publicitaria de The
 (Facebook e Instagram). Es una copia adaptada del tablero de Rekluta: la marca solo tiene Meta Ads como
 fuente, facturada en soles.
 
-Version actual: `v1.5.0`.
+Version actual: `v1.6.0`.
 
 ## Versionado
 
@@ -21,7 +21,10 @@ desenfoque). A la izquierda, el boton para minimizar el panel, el titulo de la v
 descripcion del modulo que muestra el panel lateral. A la derecha, la pildora de sincronizacion
 ("Sincronizado · hace 2 h" en verde; "Recargando…" en ambar con el punto latiendo mientras corre Actualizar;
 ambar si hay avisos de la carpeta de Drive o mas de un dia sin sincronizar; rojo si no se pudo cargar o lanzar la
-sincronizacion), que abre el detalle (datos, ultima y proxima sincronizacion, hoja del mes, fuente y avisos), y
+sincronizacion). Desde la v1.6.0 tambien se pone ambar cuando el corte de los datos lleva mas de dos dias atras, y
+entonces dice «Datos al 26 de octubre» en lugar de «Sincronizado»: sincronizar y traer datos nuevos no son lo mismo,
+y la carpeta de Drive puede llevar dias parada con el barrido en verde. El detalle lo repite («Meta Ads al 26 de
+octubre (hace 4 dias)»). La pildora abre el detalle (datos, ultima y proxima sincronizacion, hoja del mes, fuente y avisos), y
 el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y misma funcion de siempre).
 
 ## Modulos
@@ -77,6 +80,25 @@ sexo y anuncio; importes en PEN).
   campana de Ventas. Costo por compra = inversion de Ventas / compras de Ventas.
 - Un mes esta cerrado si hay datos de un mes posterior o si llega al penultimo dia; si no, es parcial y su
   ultimo dia con inversion es la fecha de corte.
+
+### La pestana "Nexus Meta" (desde la v1.6.0)
+
+Nexus escribe en la misma hoja del mes una pestana propia, `Nexus Meta`, con el contrato `NEXUS_META_V1`:
+la fila 1 identifica contrato, captura, cuenta, moneda, mes y corte, y la fila 2 son las columnas. El
+barrido la lee **solo para los dias que la exportacion todavia no trae**; un dia ya exportado manda siempre,
+porque sus filas son mas ricas y mezclar los dos origenes en el mismo dia duplicaria el gasto.
+
+De esa pestana se usan unicamente las filas de nivel `ad`: los niveles (`campaign`, `adset`, `ad`) son el
+mismo gasto contado tres veces y sumarlos lo triplicaria. El contrato trae menos columnas que la
+exportacion, asi que esos dias **no suman embudo (visitas a la web, carrito, pagos iniciados), ni desglose
+por edad y sexo, ni vista previa del anuncio**, y tampoco alcance ni ThruPlays salvo que el destino de esa
+cuenta en Nexus tenga activado `extended_fields`. Edad y sexo van como `Unknown`, la etiqueta que Meta usa
+para lo que no sabe y que el reporte semanal ya descarta al elegir su segmento.
+
+El mes afectado lleva un bloque `nexus` (`from`, `to`, `days`, `missing`) y el tablero lo dice en la linea
+de fuente: «del 30 al 31 de octubre desde Nexus (sin alcance, embudo, desglose por edad, vista previa)».
+Un mes recien creado que solo tenga la pestana de Nexus tambien se lee: la exportacion dejo de ser
+obligatoria.
 
 Para correrlo a mano:
 
