@@ -67,7 +67,10 @@ el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y
     de su tipo), campana y conjunto, tipo de resultado, resultados, los del mes anterior, variacion, costo
     por resultado, inversion, compras, valor de compras, ROAS, impresiones, alcance, CPM, clics y dias
     activos. Filtro por tipo de campana, densidad compacta recordada en `localStorage` y pantalla completa
-    (`Esc` sale). El mes anterior es el anterior **con anuncios**, que no siempre es el de al lado.
+    (`Esc` sale). Las columnas **Tipo y Anuncio van ancladas** y la cabecera tambien: diecisiete columnas
+    piden unos 2.050 px y no caben en ninguna pantalla, asi que al llegar al ROAS sin anclarlas ya no se
+    sabria de que anuncio habla la fila. El mes anterior es el anterior **con anuncios**, que no siempre
+    es el de al lado.
   - Las columnas de compras, valor y ROAS son propias de esta cuenta: Terminal Pesquero no vende en linea
     y su tabla no las tiene.
 - Calculadora de Inversion (desde la v1.7.0): de una meta de facturacion a la inversion que haria falta.

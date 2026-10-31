@@ -2390,3 +2390,30 @@ body.ads-table-full { overflow: hidden; }
   .ad-top-list, .calc-grid { grid-template-columns: 1fr; }
   #calc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Diecisiete columnas no caben en ninguna pantalla: la tabla se desplaza y las dos primeras se quedan
+   ancladas, como en Terminal Pesquero. Sin esto, al llegar al ROAS ya no se sabe de que anuncio habla
+   la fila. El ancho de las dos va fijo porque el desplazamiento de la segunda depende de la primera. */
+.ads-board-table th:nth-child(1),
+.ads-board-table td:nth-child(1) { position: sticky; left: 0; z-index: 2; width: 112px; min-width: 112px; }
+
+.ads-board-table th:nth-child(2),
+.ads-board-table td:nth-child(2) {
+  position: sticky;
+  z-index: 2;
+  left: 112px;
+  width: 240px;
+  min-width: 240px;
+  border-right: 1px solid var(--border);
+}
+
+.ads-board-table td:nth-child(1),
+.ads-board-table td:nth-child(2) { background: #fff; }
+.ads-board-table th:nth-child(1),
+.ads-board-table th:nth-child(2) { z-index: 3; background: #f8fbff; }
+
+/* La cabecera tambien se queda al desplazar hacia abajo en pantalla completa. */
+.ads-board-table thead th { position: sticky; top: 0; z-index: 2; }
+.ads-board-table thead th:nth-child(1),
+.ads-board-table thead th:nth-child(2) { z-index: 4; }
+#view-ads.table-full .table-scroll { max-height: calc(100vh - 150px); }
