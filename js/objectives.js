@@ -660,11 +660,11 @@
   // invitan a leer los cruces entre lineas, que no significan nada.
   const CAMPAIGN_CHART_KEY = 'tlm-campaign-charts-v1';
   const CAMPAIGN_METRICS = [
-    { key: 'result', label: 'Resultado', color: '#2a8276' },
-    { key: 'spend', label: 'Inversión', color: '#2563eb', money: true },
-    { key: 'impressions', label: 'Impresiones', color: '#7c3aed' },
-    { key: 'reach', label: 'Alcance', color: '#0ea5e9' },
-    { key: 'costPerResult', label: 'Costo por resultado', color: '#d97706', money: true },
+    { key: 'result', label: 'Resultado', color: '#2a8276', unit: 'count' },
+    { key: 'spend', label: 'Inversión', color: '#2563eb', unit: 'money' },
+    { key: 'impressions', label: 'Impresiones', color: '#7c3aed', unit: 'count' },
+    { key: 'reach', label: 'Alcance', color: '#0ea5e9', unit: 'count' },
+    { key: 'costPerResult', label: 'Costo por resultado', color: '#d97706', unit: 'money' },
   ];
   const DEFAULT_CAMPAIGN_METRICS = ['result', 'spend'];
   // La columna del resultado principal de cada tipo en el archivo diario.
@@ -673,7 +673,9 @@
   function campaignChartSettings(key) {
     const saved = state.campaignCharts[key] || {};
     const metrics = CAMPAIGN_METRICS.map(item => item.key).filter(metric => Array.isArray(saved.metrics) && saved.metrics.includes(metric));
-    return { metrics: metrics.length ? metrics : DEFAULT_CAMPAIGN_METRICS, mode: saved.mode === 'monthly' ? 'monthly' : 'daily' };
+    return { metrics: metrics.length ? metrics : DEFAULT_CAMPAIGN_METRICS,
+             mode: saved.mode === 'monthly' ? 'monthly' : 'daily',
+             combined: saved.combined === true };
   }
   function saveCampaignChart(key, changes) {
     state.campaignCharts[key] = { ...campaignChartSettings(key), ...changes };
@@ -752,69 +754,237 @@
     const annual = state.month === ANNUAL;
     const shownMode = annual ? 'monthly' : settings.mode;
     const mode = (key, label) => `<button type="button" class="table-tool-btn ${shownMode === key ? 'active' : ''}" data-mode="${key}"${annual && key === 'daily' ? ' disabled title="La vista por día necesita un mes"' : ''} aria-pressed="${shownMode === key}">${label}</button>`;
+    // Con un indicador no hay nada que juntar: el boton solo aparece con dos o mas.
+    const many = settings.metrics.length > 1;
+    const single = many
+      ? `<button type="button" class="table-tool-btn ${settings.combined ? 'active' : ''}" data-combined="1" aria-pressed="${settings.combined}" title="Los indicadores marcados, juntos en un cuadro">Un solo cuadro</button>`
+      : '';
+    // Cada panel pide su alto; en un solo cuadro van todos en uno.
+    const panels = many && !settings.combined ? settings.metrics.length : 1;
+    const height = Math.max(220, panels * 135);
     return `
       <div class="campaign-chart" data-key="${esc(campaign.name)}">
         <div class="campaign-chart-head">
           <div class="chart-series-toggles campaign-series">${toggles}</div>
-          <div class="campaign-chart-modes">${mode('daily', 'Por día')}${mode('monthly', 'Por mes')}</div>
+          <div class="campaign-chart-modes">${mode('daily', 'Por día')}${mode('monthly', 'Por mes')}${single}</div>
         </div>
-        <div class="chart-wrap h-220"><canvas id="campaign-chart-${index}"></canvas></div>
+        <div class="chart-wrap" style="height:${height}px"><canvas id="campaign-chart-${index}"></canvas></div>
         <div class="campaign-chart-note" id="campaign-chart-note-${index}"></div>
       </div>`;
+  }
+
+  // Formatos del grafico, como en Terminal Pesquero: el costo por ThruPlay son centesimas de sol, asi que
+  // los montos chicos llevan mas decimales o toda la columna quedaria en "S/. 0".
+  const seriesValue = (unit, value) => (unit === 'money' ? fmtCost(value) : fmtCount(value));
+  const pointValue = (unit, value) => (unit === 'money'
+    ? (Math.abs(value) >= 10 ? tickValue('money', Math.round(value)) : fmtCost(value))
+    : Number(value).toLocaleString('es-PE', { notation: Math.abs(value) >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }));
+  const tickValue = (unit, value) => (unit === 'money'
+    ? (value === 0 ? `${symbol()} 0` : `${symbol()} ${Number(value).toLocaleString('es-PE', { maximumFractionDigits: Math.abs(value) >= 10 ? 0 : Math.abs(value) >= 1 ? 2 : 3 })}`)
+    : Number(value).toLocaleString('es-PE', { notation: Math.abs(value) >= 100000 ? 'compact' : 'standard', maximumFractionDigits: 1 }));
+
+  // Con un indicador, un solo eje. Con varios, un panel por indicador apilado sobre el mismo eje de dias:
+  // nunca dos escalas a la vista sobre las mismas lineas, porque los cruces no significarian nada. En "un
+  // solo cuadro" cada indicador conserva su escala pero sin eje visible: se compara la forma.
+  function campaignScales(metrics, combined) {
+    const base = unit => ({ beginAtZero: true, border: { display: false },
+      ticks: { color: '#94a3b8', font: { size: 10 }, callback: value => tickValue(unit, value) } });
+    if (metrics.length === 1) return { y: { ...base(metrics[0].unit), grid: { color: 'rgba(15,23,42,.06)' } } };
+    if (combined) return Object.fromEntries(metrics.map((metric, index) => [`y${index}`, { display: false, beginAtZero: true, grace: '18%' }]));
+    // Chart.js apila de abajo hacia arriba: los ejes van al reves para que el primero quede arriba.
+    return Object.fromEntries(metrics.map((metric, index) => [`y${index}`, {
+      ...base(metric.unit),
+      stack: 'metrics',
+      stackWeight: 1,
+      grace: '25%',
+      // El tope de un panel cae sobre el cero del de arriba: se omite para que no se encimen.
+      ticks: { ...base(metric.unit).ticks, maxTicksLimit: 5,
+        callback: (value, tickIndex, ticks) => (index > 0 && tickIndex === ticks.length - 1 ? '' : tickValue(metric.unit, value)) },
+      grid: { color: context => (context.tick?.value === 0 ? '#cbd5e1' : 'rgba(15,23,42,.06)') },
+      panelLabel: metric.label,
+    }]).reverse());
   }
 
   function drawCampaignChart(campaign, index, monthName) {
     const canvas = document.getElementById(`campaign-chart-${index}`);
     const note = document.getElementById(`campaign-chart-note-${index}`);
-    if (!canvas || !window.Chart) return;
+    if (!canvas) return;
     const settings = campaignChartSettings(campaign.name);
-    const daily = monthName === ANNUAL ? null : dailySeries(campaign, monthName);
-    const series = settings.mode === 'daily' && daily ? daily : monthlySeries(campaign);
-    // En la vista Anual no hay dias que mostrar; no es que al mes le falte el informe por dia.
-    const fallback = settings.mode === 'daily' && !daily && monthName !== ANNUAL;
+    const annual = monthName === ANNUAL;
+    const daily = annual ? null : dailySeries(campaign, monthName);
+    const useDaily = settings.mode === 'daily' && Boolean(daily);
+    const series = useDaily ? daily : monthlySeries(campaign);
+    const fallback = settings.mode === 'daily' && !daily && !annual;
+    state.campaignChartObjects.get(campaign.name)?.destroy();
+    state.campaignChartObjects.delete(campaign.name);
     if (!series) {
       if (note) note.textContent = 'Sin serie para esta campaña en el periodo.';
       return;
     }
+    if (typeof window.Chart === 'undefined') {
+      canvas.parentElement.innerHTML = '<div class="empty-state"><strong>Gráfico no disponible sin conexión.</strong><span>Los indicadores y las tablas siguen visibles.</span></div>';
+      return;
+    }
     const chosen = CAMPAIGN_METRICS.filter(metric => settings.metrics.includes(metric.key));
-    const scales = { x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } };
-    chosen.forEach((metric, order) => { scales[`y${order}`] = { display: false, beginAtZero: true }; });
-    state.campaignChartObjects.get(campaign.name)?.destroy();
-    const chart = new window.Chart(canvas, {
-      type: 'line',
-      data: { labels: series.labels, datasets: chosen.map((metric, order) => ({
-        label: metric.label,
-        data: series.values(metric.key),
-        borderColor: metric.color,
-        backgroundColor: metric.color,
+    const combined = settings.combined === true && chosen.length > 1;
+    const datasets = chosen.map((metric, order) => ({
+      label: metric.label,
+      unit: metric.unit,
+      data: series.values(metric.key),
+      borderColor: metric.color,
+      backgroundColor: metric.color,
+      pointBackgroundColor: metric.color,
+      borderWidth: 2,
+      pointRadius: series.labels.length > 20 ? 0 : 3,
+      pointHoverRadius: 4,
+      tension: .25,
+      spanGaps: false,
+      valueLabels: true,
+      yAxisID: chosen.length === 1 ? 'y' : `y${order}`,
+    }));
+    // Con un solo indicador y vista por dia, se dibuja el mismo dia del mes anterior para comparar.
+    const previous = chosen.length === 1 && useDaily ? previousMonthWithData(monthName) : null;
+    const before = previous ? dailySeries(campaign, previous.name) : null;
+    if (before) {
+      const values = before.values(chosen[0].key);
+      datasets.push({
+        label: previous.name,
+        unit: chosen[0].unit,
+        data: series.labels.map(day => { const at = before.labels.indexOf(day); return at < 0 ? null : values[at]; }),
+        borderColor: '#cbd5e1',
+        backgroundColor: '#cbd5e1',
         borderWidth: 2,
-        pointRadius: series.labels.length > 20 ? 0 : 3,
-        pointHoverRadius: 4,
+        borderDash: [4, 4],
+        pointRadius: 0,
         tension: .25,
         spanGaps: false,
-        yAxisID: `y${order}`,
-      })) },
+        valueLabels: false,
+        yAxisID: 'y',
+      });
+    }
+    const chart = new window.Chart(canvas, {
+      type: 'line',
+      data: { labels: series.labels, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
         interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 24, right: 12, left: 4 } },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: item => {
-            const metric = chosen[item.datasetIndex];
-            const raw = item.raw;
-            if (raw === null) return `${metric.label}: sin dato`;
-            return `${metric.label}: ${metric.money ? fmtMoney(raw, raw < 0.1 ? 3 : 2) : fmtCount(raw)}`;
-          } } },
+          tooltip: {
+            filter: item => item.raw != null,
+            callbacks: {
+              title: items => (useDaily ? `Día ${items[0].label}` : items[0].label),
+              label: context => ` ${context.dataset.label}: ${seriesValue(context.dataset.unit, context.raw)}`,
+            },
+          },
         },
-        scales,
+        scales: {
+          x: { grid: { display: false }, border: { color: '#cbd5e1' },
+               ticks: { color: '#94a3b8', font: { size: 10 }, autoSkip: true, maxTicksLimit: useDaily ? 16 : 12 } },
+          ...campaignScales(chosen, combined),
+        },
       },
+      plugins: [{
+        // El valor de cada punto, menos los ceros. Arriba en un pico y abajo en un valle, para no montarse
+        // en la linea; si choca con otra etiqueta o se sale de su panel, prueba el otro lado y si tampoco
+        // cabe se omite y queda en el tooltip.
+        id: 'valueLabels',
+        afterDatasetsDraw(target) {
+          const ctx = target.ctx;
+          const placed = [];
+          const overlaps = box => placed.some(other => !(box.right < other.left || box.left > other.right || box.bottom < other.top || box.top > other.bottom));
+          const isValue = value => value != null && Number.isFinite(Number(value));
+          ctx.save();
+          ctx.font = '600 11px Inter, sans-serif';
+          Object.values(target.scales).forEach(scale => {
+            if (!scale.options.panelLabel) return;
+            const left = target.chartArea.left + 4;
+            placed.push({ left, right: left + ctx.measureText(scale.options.panelLabel).width + 8, top: scale.top + 2, bottom: scale.top + 18 });
+          });
+          ctx.font = '600 10px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(255,255,255,.92)';
+          target.data.datasets.forEach((dataset, order) => {
+            if (!dataset.valueLabels) return;
+            const meta = target.getDatasetMeta(order);
+            const scale = target.scales[meta.yAxisID];
+            if (!scale) return;
+            const top = scale.top <= target.chartArea.top + 1 ? target.chartArea.top - 22 : scale.top;
+            ctx.fillStyle = dataset.borderColor;
+            meta.data.forEach((point, pointIndex) => {
+              const raw = dataset.data[pointIndex];
+              if (!isValue(raw) || Number(raw) === 0) return;
+              const text = pointValue(dataset.unit, raw);
+              const half = ctx.measureText(text).width / 2 + 2;
+              const prev = dataset.data[pointIndex - 1];
+              const next = dataset.data[pointIndex + 1];
+              const valley = isValue(prev) && isValue(next) && raw < prev && raw < next;
+              const sides = valley ? [point.y + 13, point.y - 12] : [point.y - 12, point.y + 13];
+              const x = Math.min(Math.max(point.x, half), target.width - half);
+              const box = sides.map(y => ({ y, left: x - half, right: x + half, top: y - 6, bottom: y + 6 }))
+                .find(item => item.top >= top && item.bottom <= scale.bottom && !overlaps(item));
+              if (!box) return;
+              placed.push(box);
+              ctx.strokeText(text, x, box.y);
+              ctx.fillText(text, x, box.y);
+            });
+          });
+          ctx.restore();
+        },
+      }, {
+        // El nombre de cada panel, arriba a la izquierda y en horizontal (solo con varios indicadores).
+        id: 'panelLabels',
+        afterDatasetsDraw(target) {
+          const ctx = target.ctx;
+          ctx.save();
+          ctx.font = '600 11px Inter, sans-serif';
+          ctx.textBaseline = 'top';
+          Object.values(target.scales).forEach(scale => {
+            const label = scale.options.panelLabel;
+            if (!label) return;
+            const x = target.chartArea.left + 8;
+            const y = scale.top + 4;
+            ctx.fillStyle = 'rgba(255,255,255,.85)';
+            ctx.fillRect(x - 4, y - 2, ctx.measureText(label).width + 8, 16);
+            ctx.fillStyle = '#475569';
+            ctx.fillText(label, x, y);
+          });
+          ctx.restore();
+        },
+      }, {
+        // Linea vertical en el dia del tooltip, a lo alto de todos los paneles.
+        id: 'crosshair',
+        afterDatasetsDraw(target) {
+          const active = target.tooltip?.getActiveElements() || [];
+          if (!active.length) return;
+          const ctx = target.ctx;
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(active[0].element.x, target.chartArea.top);
+          ctx.lineTo(active[0].element.x, target.chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        },
+      }],
     });
     state.campaignChartObjects.set(campaign.name, chart);
     if (note) {
+      const what = combined ? 'Los indicadores van juntos, cada uno con su escala y sin eje a la vista: se compara la forma y el valor se lee en el punto.'
+        : chosen.length > 1 ? 'Cada indicador en su panel, con su escala, sobre el mismo eje de días.'
+          : before ? `La línea punteada es ${before ? previous.name : ''}, el mismo día del mes anterior.`
+            : 'Marca más indicadores para verlos en paneles apilados.';
       note.textContent = fallback
         ? `${series.note} El informe por día solo guarda desde el ${longDate(state.dailyRaw?.firstDay)}, así que este mes no tiene vista por día.`
-        : `${series.note} Cada indicador lleva su propia escala y ninguna se dibuja: se compara la forma y el valor se lee en el punto.`;
+        : `${series.note} ${what}`;
     }
   }
 
@@ -1158,9 +1328,11 @@
         renderCampaigns(current());
         return;
       }
-      const mode = event.target.closest('.campaign-chart-modes .table-tool-btn');
-      if (!mode) return;
-      saveCampaignChart(mode.closest('.campaign-chart').dataset.key, { mode: mode.dataset.mode });
+      const button = event.target.closest('.campaign-chart-modes .table-tool-btn');
+      if (!button) return;
+      const key = button.closest('.campaign-chart').dataset.key;
+      if (button.dataset.combined) saveCampaignChart(key, { combined: !campaignChartSettings(key).combined });
+      else saveCampaignChart(key, { mode: button.dataset.mode });
       renderCampaigns(current());
     });
     // Un indicador sin marcar deja el cuadro vacio: se exige al menos uno, como en Terminal Pesquero.

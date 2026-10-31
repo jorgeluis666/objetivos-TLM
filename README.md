@@ -58,13 +58,20 @@ el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y
     Los conjuntos salen de `months[].ads`, que trae el conjunto en cada fila; su "resultado" es el tipo
     que mas resultados le da al conjunto, porque una campana de Mensajes mezcla conversaciones con
     visitas al perfil y sumarlas no significaria nada.
-  - Cada cuadro trae ademas **su propio grafico** (v1.9.0), con indicadores marcables -resultado,
-    inversion, impresiones, alcance y costo por resultado- y dos vistas, Por dia y Por mes. Lo marcado
-    y la vista se recuerdan por campana en `localStorage`. Los indicadores van en un solo cuadro, cada
-    uno con su escala y **sin eje a la vista**: lo que se compara es la forma y el valor se lee en el
-    punto, porque dos escalas dibujadas a la vez invitan a leer los cruces entre lineas, que no
-    significan nada. Un dia sin resultados deja hueco en el costo por resultado y no un cero, que se
-    leeria como "gratis" en vez de "no hubo".
+  - Cada cuadro trae ademas **su propio grafico**, el mismo de Terminal Pesquero: indicadores marcables
+    -resultado, inversion, impresiones, alcance y costo por resultado-, vistas Por dia y Por mes, y el
+    boton `Un solo cuadro`. Lo marcado, la vista y ese boton se recuerdan por campana en `localStorage`.
+    - **Con varios indicadores, cada uno va en su propio panel**, apilados sobre el mismo eje de dias,
+      con su escala, el nombre del panel arriba a la izquierda, una linea vertical en el dia del tooltip
+      y el valor en cada punto. Nunca dos escalas a la vista sobre las mismas lineas: los cruces entre
+      lineas de distinta escala no significan nada. El alto del cuadro crece con los paneles.
+    - **Con `Un solo cuadro`** los indicadores van juntos, cada uno con su escala pero sin eje visible:
+      se compara la forma y el valor se lee en el punto.
+    - **Con uno solo**, un eje y la linea punteada del mismo dia del mes anterior.
+    - El valor de cada punto va arriba en un pico y abajo en un valle; si choca con otra etiqueta o se
+      sale de su panel prueba el otro lado y, si no cabe, se omite y queda en el tooltip. Los ceros no
+      llevan etiqueta. Un dia sin resultados deja hueco en el costo por resultado y no un cero, que se
+      leeria como "gratis" en vez de "no hubo".
   - **La vista Por dia solo existe de julio en adelante**: `data/tlm-ads-daily.json` guarda las ultimas
     15 semanas y nada mas. Un mes anterior cae a Por mes y el cuadro dice por que. En la pestana Anual
     la vista por dia no se ofrece, porque no hay un mes al que referirla.
