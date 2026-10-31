@@ -46,7 +46,7 @@
   const COMPARE_KEYS = KPI_DEFS.map(kpi => kpi.key);
   // Chart.js en Inter, como Royal Baby (ejes, tooltips y leyendas de los graficos del tablero).
   if (window.Chart?.defaults?.font) window.Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), syncing: false, syncError: false, loadError: false, daily: null };
+  const state = { data: null, month: null, chart: null, group: 'all', metric: readPref(CHART_METRIC_KEY, 'spend'), chartCollapsed: readPref(CHART_COLLAPSED_KEY, 'false') === 'true', open: new Set(), campaignCharts: {}, campaignChartObjects: new Map(), dailyRaw: null, syncing: false, syncError: false, loadError: false, daily: null };
 
   function readPref(key, fallback) {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -654,6 +654,170 @@
         <tbody>${body}</tbody></table></div>`;
   }
 
+  // ── Grafico de cada campana ───────────────────────────────────────────────
+  // Se pueden marcar varios indicadores. Van en un solo cuadro, cada uno con su escala y sin eje a la
+  // vista: lo que se compara es la forma, y el valor se lee en el punto. Dos escalas dibujadas a la vez
+  // invitan a leer los cruces entre lineas, que no significan nada.
+  const CAMPAIGN_CHART_KEY = 'tlm-campaign-charts-v1';
+  const CAMPAIGN_METRICS = [
+    { key: 'result', label: 'Resultado', color: '#2a8276' },
+    { key: 'spend', label: 'Inversión', color: '#2563eb', money: true },
+    { key: 'impressions', label: 'Impresiones', color: '#7c3aed' },
+    { key: 'reach', label: 'Alcance', color: '#0ea5e9' },
+    { key: 'costPerResult', label: 'Costo por resultado', color: '#d97706', money: true },
+  ];
+  const DEFAULT_CAMPAIGN_METRICS = ['result', 'spend'];
+  // La columna del resultado principal de cada tipo en el archivo diario.
+  const RESULT_COLUMN = { Ventas: 'purchases', Mensajes: 'conversations', Reconocimiento: 'thruplays' };
+
+  function campaignChartSettings(key) {
+    const saved = state.campaignCharts[key] || {};
+    const metrics = CAMPAIGN_METRICS.map(item => item.key).filter(metric => Array.isArray(saved.metrics) && saved.metrics.includes(metric));
+    return { metrics: metrics.length ? metrics : DEFAULT_CAMPAIGN_METRICS, mode: saved.mode === 'monthly' ? 'monthly' : 'daily' };
+  }
+  function saveCampaignChart(key, changes) {
+    state.campaignCharts[key] = { ...campaignChartSettings(key), ...changes };
+    savePref(CAMPAIGN_CHART_KEY, JSON.stringify(state.campaignCharts));
+  }
+
+  // Serie por dia de una campana dentro del mes elegido. El archivo diario solo guarda las ultimas
+  // semanas, asi que para los meses anteriores no hay vista por dia y el cuadro lo dice.
+  function dailySeries(campaign, monthName) {
+    const daily = state.dailyRaw;
+    const columns = Array.isArray(daily?.columns) ? daily.columns : [];
+    const start = Date.parse(`${daily?.firstDay}T00:00:00Z`);
+    const index = columns.indexOf('d');
+    const campaignCol = columns.indexOf('campaign');
+    if (!Array.isArray(daily?.rows) || index < 0 || campaignCol < 0 || !Number.isFinite(start)) return null;
+    const which = (daily.campaigns || []).findIndex(item => item.name === campaign.name);
+    if (which < 0) return null;
+    const month = MONTHS.indexOf(monthName) + 1;
+    if (month < 1) return null;
+    const resultCol = columns.indexOf(RESULT_COLUMN[campaign.group] || 'clicks');
+    const spendCol = columns.indexOf('spend');
+    const cols = { spend: spendCol, impressions: columns.indexOf('impressions'), reach: columns.indexOf('reach') };
+    const byDay = new Map();
+    daily.rows.forEach(row => {
+      if (Number(row[campaignCol]) !== which) return;
+      const date = new Date(start + Number(row[index]) * 86400000);
+      if (date.getUTCFullYear() !== state.data.year || date.getUTCMonth() + 1 !== month) return;
+      const day = date.getUTCDate();
+      const totals = byDay.get(day) || { result: 0, spend: 0, impressions: 0, reach: 0 };
+      totals.result += Number(row[resultCol] || 0);
+      Object.entries(cols).forEach(([key, column]) => { totals[key] += Number(row[column] || 0); });
+      byDay.set(day, totals);
+    });
+    if (!byDay.size) return null;
+    const days = [...byDay.keys()].sort((a, b) => a - b);
+    return {
+      labels: days.map(String),
+      values: key => days.map(day => value(byDay.get(day), key)),
+      note: `Por día, del ${days[0]} al ${days[days.length - 1]} de ${monthName.toLowerCase()}.`,
+    };
+  }
+
+  // Serie por mes: la campana a lo largo del ano. Siempre disponible, tambien en la vista Anual.
+  function monthlySeries(campaign) {
+    const points = [];
+    state.data.months.forEach(month => {
+      if (!hasData(month)) return;
+      const found = (month.campaigns || []).find(item => item.name === campaign.name);
+      if (!found) return;
+      points.push({ label: SHORT_MONTHS[MONTHS.indexOf(month.name)], totals: {
+        result: mainResult(found).value, spend: found.spend, impressions: found.impressions, reach: found.reach } });
+    });
+    if (!points.length) return null;
+    return {
+      labels: points.map(point => point.label),
+      values: key => points.map(point => value(point.totals, key)),
+      note: `Por mes, los ${points.length} meses en que corrió.`,
+    };
+  }
+
+  // Un dia sin resultados no tiene costo por resultado: queda como hueco y no como cero, que leeria
+  // como "gratis" en vez de "no hubo".
+  function value(totals, key) {
+    if (!totals) return null;
+    if (key !== 'costPerResult') return Number(totals[key] || 0);
+    return totals.result > 0 ? Number(totals.spend || 0) / totals.result : null;
+  }
+
+  function campaignChartHtml(campaign, index) {
+    const settings = campaignChartSettings(campaign.name);
+    const toggles = CAMPAIGN_METRICS.map(metric => `
+      <label class="series-toggle ${settings.metrics.includes(metric.key) ? 'active' : ''}" style="--serie:${metric.color}">
+        <input type="checkbox" value="${metric.key}" ${settings.metrics.includes(metric.key) ? 'checked' : ''}>${metric.label}
+      </label>`).join('');
+    // En el acumulado del ano la vista por dia no se ofrece: no hay un mes al que referirla.
+    const annual = state.month === ANNUAL;
+    const shownMode = annual ? 'monthly' : settings.mode;
+    const mode = (key, label) => `<button type="button" class="table-tool-btn ${shownMode === key ? 'active' : ''}" data-mode="${key}"${annual && key === 'daily' ? ' disabled title="La vista por día necesita un mes"' : ''} aria-pressed="${shownMode === key}">${label}</button>`;
+    return `
+      <div class="campaign-chart" data-key="${esc(campaign.name)}">
+        <div class="campaign-chart-head">
+          <div class="chart-series-toggles campaign-series">${toggles}</div>
+          <div class="campaign-chart-modes">${mode('daily', 'Por día')}${mode('monthly', 'Por mes')}</div>
+        </div>
+        <div class="chart-wrap h-220"><canvas id="campaign-chart-${index}"></canvas></div>
+        <div class="campaign-chart-note" id="campaign-chart-note-${index}"></div>
+      </div>`;
+  }
+
+  function drawCampaignChart(campaign, index, monthName) {
+    const canvas = document.getElementById(`campaign-chart-${index}`);
+    const note = document.getElementById(`campaign-chart-note-${index}`);
+    if (!canvas || !window.Chart) return;
+    const settings = campaignChartSettings(campaign.name);
+    const daily = monthName === ANNUAL ? null : dailySeries(campaign, monthName);
+    const series = settings.mode === 'daily' && daily ? daily : monthlySeries(campaign);
+    // En la vista Anual no hay dias que mostrar; no es que al mes le falte el informe por dia.
+    const fallback = settings.mode === 'daily' && !daily && monthName !== ANNUAL;
+    if (!series) {
+      if (note) note.textContent = 'Sin serie para esta campaña en el periodo.';
+      return;
+    }
+    const chosen = CAMPAIGN_METRICS.filter(metric => settings.metrics.includes(metric.key));
+    const scales = { x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } };
+    chosen.forEach((metric, order) => { scales[`y${order}`] = { display: false, beginAtZero: true }; });
+    state.campaignChartObjects.get(campaign.name)?.destroy();
+    const chart = new window.Chart(canvas, {
+      type: 'line',
+      data: { labels: series.labels, datasets: chosen.map((metric, order) => ({
+        label: metric.label,
+        data: series.values(metric.key),
+        borderColor: metric.color,
+        backgroundColor: metric.color,
+        borderWidth: 2,
+        pointRadius: series.labels.length > 20 ? 0 : 3,
+        pointHoverRadius: 4,
+        tension: .25,
+        spanGaps: false,
+        yAxisID: `y${order}`,
+      })) },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: item => {
+            const metric = chosen[item.datasetIndex];
+            const raw = item.raw;
+            if (raw === null) return `${metric.label}: sin dato`;
+            return `${metric.label}: ${metric.money ? fmtMoney(raw, raw < 0.1 ? 3 : 2) : fmtCount(raw)}`;
+          } } },
+        },
+        scales,
+      },
+    });
+    state.campaignChartObjects.set(campaign.name, chart);
+    if (note) {
+      note.textContent = fallback
+        ? `${series.note} El informe por día solo guarda desde el ${longDate(state.dailyRaw?.firstDay)}, así que este mes no tiene vista por día.`
+        : `${series.note} Cada indicador lleva su propia escala y ninguna se dibuja: se compara la forma y el valor se lee en el punto.`;
+    }
+  }
+
   function renderCampaigns(month) {
     const shown = month.campaigns.filter(campaign => state.group === 'all' || campaign.group === state.group);
     document.getElementById('campaigns-title').textContent = month.annual ? 'Campañas de 2026 (acumulado)' : `Campañas de ${month.name} 2026`;
@@ -665,7 +829,7 @@
     const previous = previousMonthWithData(month.annual ? ANNUAL : month.name);
     const label = previous ? previous.name : '';
     const ads = adsOfMonth(month.annual ? ANNUAL : month.name);
-    host.innerHTML = shown.map(campaign => {
+    host.innerHTML = shown.map((campaign, index) => {
       const key = campaign.name;
       const open = !state.open.has(key);
       const before = previous ? (previous.campaigns || []).find(item => item.name === campaign.name) : null;
@@ -681,11 +845,18 @@
           </div>
           <div class="campaign-block-body"${open ? '' : ' hidden'}>
             ${campaignKpis(campaign, before, label)}
+            ${campaignChartHtml(campaign, index)}
             ${adSetsHtml(mine, campaign)}
             ${campaignAdsHtml(mine, campaign)}
           </div>
         </section>`;
     }).join('');
+    state.campaignChartObjects.forEach((chart, name) => {
+      if (!shown.some(campaign => campaign.name === name)) { chart.destroy(); state.campaignChartObjects.delete(name); }
+    });
+    shown.forEach((campaign, index) => {
+      if (!state.open.has(campaign.name)) drawCampaignChart(campaign, index, month.annual ? ANNUAL : month.name);
+    });
   }
   function renderMonth() {
     const month = current();
@@ -873,7 +1044,9 @@
     }
   }
   async function applyData(data) {
-    const daily = dailyTotals(await fetchDaily());
+    const raw = await fetchDaily();
+    const daily = dailyTotals(raw);
+    if (raw) state.dailyRaw = raw;
     if (daily) state.daily = daily;
     state.data = data;
     const withData = data.months.filter(hasData);
@@ -941,6 +1114,9 @@
     renderHistory();
     window.dispatchEvent(new CustomEvent('tlm:data-updated'));
   }
+  function loadCampaignCharts() {
+    try { state.campaignCharts = JSON.parse(readPref(CAMPAIGN_CHART_KEY, '{}')) || {}; } catch { state.campaignCharts = {}; }
+  }
   function wireEvents() {
     document.getElementById('chart-series-toggles').addEventListener('change', event => {
       const input = event.target.closest('input[type="radio"]');
@@ -973,11 +1149,28 @@
       syncFromDrive();
     });
     // state.open guarda los cuadros MINIMIZADOS: por defecto se abren todos, como en Terminal Pesquero.
-    document.getElementById('campaign-blocks').addEventListener('click', event => {
-      const button = event.target.closest('.campaign-collapse');
-      if (!button) return;
-      const key = button.dataset.key;
-      if (state.open.has(key)) state.open.delete(key); else state.open.add(key);
+    const blocks = document.getElementById('campaign-blocks');
+    blocks.addEventListener('click', event => {
+      const collapse = event.target.closest('.campaign-collapse');
+      if (collapse) {
+        const key = collapse.dataset.key;
+        if (state.open.has(key)) state.open.delete(key); else state.open.add(key);
+        renderCampaigns(current());
+        return;
+      }
+      const mode = event.target.closest('.campaign-chart-modes .table-tool-btn');
+      if (!mode) return;
+      saveCampaignChart(mode.closest('.campaign-chart').dataset.key, { mode: mode.dataset.mode });
+      renderCampaigns(current());
+    });
+    // Un indicador sin marcar deja el cuadro vacio: se exige al menos uno, como en Terminal Pesquero.
+    blocks.addEventListener('change', event => {
+      const input = event.target.closest('.campaign-series input[type="checkbox"]');
+      if (!input) return;
+      const chart = input.closest('.campaign-chart');
+      const metrics = [...chart.querySelectorAll('.campaign-series input:checked')].map(item => item.value);
+      if (!metrics.length) { input.checked = true; return; }
+      saveCampaignChart(chart.dataset.key, { metrics });
       renderCampaigns(current());
     });
   }
@@ -993,7 +1186,9 @@
       const withData = state.data.months.filter(hasData);
       if (!withData.length) throw new Error('Sin meses con datos');
       state.month = withData[withData.length - 1].name;
-      state.daily = dailyTotals(await dailyRequest);
+      state.dailyRaw = await dailyRequest;
+      state.daily = dailyTotals(state.dailyRaw);
+      loadCampaignCharts();
       wireEvents();
       wireStatusCard();
       renderAll();

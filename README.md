@@ -58,6 +58,16 @@ el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y
     Los conjuntos salen de `months[].ads`, que trae el conjunto en cada fila; su "resultado" es el tipo
     que mas resultados le da al conjunto, porque una campana de Mensajes mezcla conversaciones con
     visitas al perfil y sumarlas no significaria nada.
+  - Cada cuadro trae ademas **su propio grafico** (v1.9.0), con indicadores marcables -resultado,
+    inversion, impresiones, alcance y costo por resultado- y dos vistas, Por dia y Por mes. Lo marcado
+    y la vista se recuerdan por campana en `localStorage`. Los indicadores van en un solo cuadro, cada
+    uno con su escala y **sin eje a la vista**: lo que se compara es la forma y el valor se lee en el
+    punto, porque dos escalas dibujadas a la vez invitan a leer los cruces entre lineas, que no
+    significan nada. Un dia sin resultados deja hueco en el costo por resultado y no un cero, que se
+    leeria como "gratis" en vez de "no hubo".
+  - **La vista Por dia solo existe de julio en adelante**: `data/tlm-ads-daily.json` guarda las ultimas
+    15 semanas y nada mas. Un mes anterior cae a Por mes y el cuadro dice por que. En la pestana Anual
+    la vista por dia no se ofrece, porque no hay un mes al que referirla.
   - Por mes: resumen con la distribucion por tipo de campana, embudo de compra de la campana de Ventas
     (impresiones > clics > visitas a la web > carrito > pagos iniciados > compras) y tabla de campanas con
     sus mejores anuncios (con vista previa en Meta). La tabla cierra con la fila "Total del periodo" de las

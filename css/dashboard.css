@@ -2465,3 +2465,46 @@ body.ads-table-full { overflow: hidden; }
 .adset-table .campaign-name small { display: block; margin-top: 3px; color: #94a3b8; font-weight: 400; }
 .adset-table .campaign-name a { color: inherit; text-decoration: none; }
 .adset-table .campaign-name a:hover { text-decoration: underline; }
+
+/* Gráfico de cada campaña (v1.9.0) */
+.campaign-chart { margin-top: 16px; }
+
+.campaign-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.campaign-series { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.campaign-series .series-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: #52647d;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.campaign-series .series-toggle::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--serie, #94a3b8);
+  content: "";
+}
+
+.campaign-series .series-toggle.active { border-color: var(--serie, var(--brand)); color: #06132b; background: #f8fafc; }
+.campaign-series .series-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.campaign-chart-modes { display: flex; gap: 6px; }
+.campaign-chart-modes .table-tool-btn.active { border-color: var(--brand-border); color: var(--brand-text); background: var(--brand-soft); }
+.h-220 { height: 220px; }
+.campaign-chart-note { margin-top: 8px; color: #7b8da6; font-size: 11px; line-height: 1.5; }
