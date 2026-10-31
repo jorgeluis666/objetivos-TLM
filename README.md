@@ -50,6 +50,14 @@ el boton fantasma "Actualizar" con icono de recarga (mismo `id="ads-sync-btn"` y
     como hueco. Cada punto lleva su valor: arriba en un pico, abajo en un valle, con halo blanco y dentro del
     grafico; sin etiqueta en los ceros y omitida si choca con otra (queda en el tooltip). Los soles van sin
     decimales salvo montos menores a S/. 10.
+  - Las campanas, desde la v1.8.0, van en **un cuadro cada una** y no en una fila de tabla, con la
+    estructura del tablero de Terminal Pesquero: KPIs de la campana contra el mes anterior (resultado,
+    inversion, costo por resultado, alcance, impresiones, CPM y, cuando hay ventas, ROAS), la tabla de
+    sus conjuntos de anuncios y la de sus anuncios, de mas a menos resultados y con la estrella en el
+    lider. El boton de la derecha minimiza el cuadro. El mes anterior es el anterior **con datos**.
+    Los conjuntos salen de `months[].ads`, que trae el conjunto en cada fila; su "resultado" es el tipo
+    que mas resultados le da al conjunto, porque una campana de Mensajes mezcla conversaciones con
+    visitas al perfil y sumarlas no significaria nada.
   - Por mes: resumen con la distribucion por tipo de campana, embudo de compra de la campana de Ventas
     (impresiones > clics > visitas a la web > carrito > pagos iniciados > compras) y tabla de campanas con
     sus mejores anuncios (con vista previa en Meta). La tabla cierra con la fila "Total del periodo" de las

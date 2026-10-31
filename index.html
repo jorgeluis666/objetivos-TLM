@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/dashboard.css?v=1.7.1">
+<link rel="stylesheet" href="css/dashboard.css?v=1.8.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.7.1</span></div></div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.8.0</span></div></div>
     <div class="s-group-lbl">Módulos activos</div>
     <button title="Gasto publicitario" class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
@@ -76,7 +76,7 @@
         <div class="ads-platforms" id="ads-platforms"></div>
         <div class="panel campaigns-panel">
           <div class="panel-head campaigns-panel-head"><div><div class="panel-title" id="campaigns-title">Campañas del mes</div><div class="panel-sub" id="campaigns-sub"></div></div><div class="chart-series-toggles" id="campaigns-filter" role="group" aria-label="Filtrar por tipo de campaña"><label class="series-toggle active" data-series="all"><input type="radio" name="ads-group-filter" value="all" checked>Todas</label><label class="series-toggle" data-series="Ventas"><input type="radio" name="ads-group-filter" value="Ventas">Ventas</label><label class="series-toggle" data-series="Mensajes"><input type="radio" name="ads-group-filter" value="Mensajes">Mensajes</label><label class="series-toggle" data-series="Reconocimiento"><input type="radio" name="ads-group-filter" value="Reconocimiento">Reconocimiento</label></div></div>
-          <div class="table-scroll"><table class="data-table campaigns-table ads-table"><thead><tr><th>Campaña</th><th>Tipo</th><th class="num">Inversión</th><th class="num">% del mes</th><th class="num">Resultado principal</th><th class="num">Impresiones</th><th class="num">CPM</th><th class="num">Clics en el enlace</th><th class="num">Costo por clic</th><th class="num">Compras</th><th class="num">Valor de compras</th><th class="num">ROAS</th><th>Mejores anuncios</th></tr></thead><tbody id="campaigns-body"></tbody></table></div>
+          <div class="campaign-blocks" id="campaign-blocks"></div>
         </div>
       </section>
 
@@ -309,7 +309,7 @@
     <div class="reports-modal-foot">La vista previa usa el visor de Google Drive. Si no carga, abre el documento en Drive.</div>
   </div>
 </div>
-<script src="js/objectives.js?v=1.7.0"></script>
+<script src="js/objectives.js?v=1.8.0"></script>
 <script src="js/anuncios.js?v=1.7.0"></script>
 <script src="js/calculadora.js?v=1.7.0"></script>
 <script src="js/projections.js?v=1.5.0"></script>

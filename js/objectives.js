@@ -20,12 +20,6 @@
   };
   // Grupo de campanas del que sale cada costo por resultado y su resultado.
   const COST_BASES = { costPerPurchase: ['Ventas', 'purchases'], costPerConversation: ['Mensajes', 'conversations'] };
-  // Columnas de los mejores anuncios segun el tipo de campana.
-  const AD_COLUMNS = {
-    Ventas: [['purchases', 'Compras'], ['revenue', 'Valor', true], ['clicks', 'Clics']],
-    Mensajes: [['conversations', 'Conversaciones'], ['profileVisits', 'Visitas al perfil'], ['clicks', 'Clics']],
-    Reconocimiento: [['thruplays', 'ThruPlays'], ['impressions', 'Impresiones'], ['clicks', 'Clics']],
-  };
   const CHART_COLLAPSED_KEY = 'tlm-chart-collapsed-v1';
   const CHART_METRIC_KEY = 'tlm-ads-chart-metric-v1';
   // Web App de Apps Script (scripts/sync-trigger.gs) que lanza el workflow sync-ads-data.yml con un token
@@ -530,71 +524,168 @@
         <div class="funnel-foot">Inversión ${fmtMoney(sales.spend)} | valor de compras ${fmtMoney(sales.revenue)} | ROAS ${fmtRoas(ratio(sales.revenue, sales.spend))}</div>
       </div>`;
   }
-  function adsDetail(campaign) {
-    const ads = campaign.topAds || [];
-    if (!ads.length) return '<span class="no-data">Sin detalle por anuncio</span>';
-    const cols = AD_COLUMNS[campaign.group] || [['clicks', 'Clics'], ['impressions', 'Impresiones']];
-    const cell = (ad, [key, , money]) => money ? fmtMoney(ad[key]) : fmtCount(ad[key]);
-    return `<table class="ads-top-table"><thead><tr><th>Anuncio</th>${cols.map(([, name]) => `<th class="num">${name}</th>`).join('')}<th class="num">Inversión</th><th></th></tr></thead><tbody>${ads.map(ad => `
-      <tr><td>${esc(ad.name)}</td>${cols.map(col => `<td class="num">${cell(ad, col)}</td>`).join('')}<td class="num">${fmtMoney(ad.spend)}</td><td>${safeUrl(ad.url) ? `<a href="${safeUrl(ad.url)}" target="_blank" rel="noopener">Ver anuncio</a>` : ''}</td></tr>`).join('')}</tbody></table>`;
+  // ── Campanas, un marco cada una ───────────────────────────────────────────
+  // La estructura del tablero de Terminal Pesquero: en vez de una fila por campana, un cuadro por campana
+  // con sus KPIs contra el mes anterior, sus conjuntos de anuncios y sus anuncios. El detalle sale de
+  // months[].ads, la tabla por anuncio del barrido, que trae el conjunto en cada fila.
+  const AD_SUMS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts',
+                   'purchases', 'revenue', 'conversations', 'profileVisits', 'thruplays'];
+
+  // Anuncios del mes (o del ano, sumados por anuncio y conjunto) en forma de objeto.
+  function adsOfMonth(name) {
+    const columns = state.data.adColumns;
+    if (!Array.isArray(columns)) return [];
+    const toAd = row => { const ad = {}; columns.forEach((key, index) => { ad[key] = row[index]; }); return ad; };
+    const months = name === ANNUAL
+      ? state.data.months.filter(month => (month.ads || []).length)
+      : [monthData(name)].filter(month => (month?.ads || []).length);
+    const total = new Map();
+    months.forEach(month => month.ads.forEach(row => {
+      const ad = toAd(row);
+      const key = `${ad.name}|${ad.campaign}|${ad.adSet}`;
+      const found = total.get(key);
+      if (!found) { total.set(key, ad); return; }
+      AD_SUMS.forEach(metric => { found[metric] += ad[metric]; });
+      found.results += ad.results;
+      found.days += ad.days;
+      if (!found.url) found.url = ad.url;
+    }));
+    return [...total.values()];
   }
-  function renderCampaigns(month) {
-    const rows = month.campaigns.map((campaign, index) => ({ campaign, key: String(index) })).filter(({ campaign }) => state.group === 'all' || campaign.group === state.group);
-    document.getElementById('campaigns-title').textContent = month.annual ? 'Campañas de 2026 (acumulado)' : `Campañas de ${month.name} 2026`;
-    document.getElementById('campaigns-sub').textContent = `${month.campaigns.length} campañas con inversión. Despliega cada fila para ver los mejores anuncios.`;
-    document.querySelectorAll('#campaigns-filter .series-toggle').forEach(item => item.classList.toggle('active', item.dataset.series === state.group));
-    const body = document.getElementById('campaigns-body');
-    if (!rows.length) { body.innerHTML = '<tr><td colspan="13" class="table-empty">Sin campañas de este tipo en el mes.</td></tr>'; return; }
-    body.innerHTML = rows.map(({ campaign, key }) => {
-      const result = mainResult(campaign);
-      const open = state.open.has(key);
-      const hasAds = (campaign.topAds || []).length > 0;
-      return `
-        <tr class="ads-campaign-row ${open ? 'open' : ''}">
-          <td class="campaign-name">${esc(campaign.name)}</td>
-          <td>${groupPill(campaign.group)}</td>
-          <td class="num"><b>${fmtMoney(campaign.spend)}</b></td>
-          <td class="num">${fmtPct(ratio(campaign.spend * 100, month.kpis.spend))}</td>
-          <td class="num">${fmtCount(result.value)} <small class="result-label">${result.label}</small></td>
-          <td class="num">${fmtCount(campaign.impressions)}</td>
-          <td class="num">${fmtMoney(campaign.cpm)}</td>
-          <td class="num">${fmtCount(campaign.clicks)}</td>
-          <td class="num">${fmtCost(campaign.cpc)}</td>
-          <td class="num">${campaign.purchases ? fmtCount(campaign.purchases) : '—'}</td>
-          <td class="num">${campaign.revenue ? fmtMoney(campaign.revenue) : '—'}</td>
-          <td class="num">${campaign.revenue ? fmtRoas(ratio(campaign.revenue, campaign.spend)) : '—'}</td>
-          <td>${hasAds ? `<button type="button" class="ads-expand" data-key="${key}" aria-expanded="${open}">${open ? 'Ocultar' : `Ver ${campaign.topAds.length}`}</button>` : '<span class="no-data">—</span>'}</td>
-        </tr>
-        ${open ? `<tr class="ads-detail-row"><td colspan="13">${adsDetail(campaign)}</td></tr>` : ''}`;
-    }).join('') + totalRow(rows.map(({ campaign }) => campaign), month);
+
+  // El mes anterior con datos, que no siempre es el de al lado: febrero estuvo vacio mucho tiempo.
+  function previousMonthWithData(name) {
+    if (name === ANNUAL) return null;
+    for (let index = MONTHS.indexOf(name) - 1; index >= 0; index -= 1) {
+      const month = monthData(MONTHS[index]);
+      if (hasData(month)) return month;
+    }
+    return null;
   }
-  // "Total del periodo" de las campanas a la vista (respeta el filtro de tipo): las sumas salen de las campanas y
-  // CPM, costo por clic y ROAS se recalculan sobre esas sumas. El resultado principal solo se suma si todas son
-  // del mismo tipo (compras, conversaciones y ThruPlays no se suman entre si).
-  function totalRow(campaigns, month) {
-    const sum = key => campaigns.reduce((total, campaign) => total + Number(campaign[key] || 0), 0);
-    const t = { spend: sum('spend'), impressions: sum('impressions'), clicks: sum('clicks'), purchases: sum('purchases'), revenue: sum('revenue') };
-    const groups = new Set(campaigns.map(campaign => campaign.group));
-    const result = groups.size === 1
-      ? mainResult({ group: campaigns[0].group, purchases: t.purchases, conversations: sum('conversations'), thruplays: sum('thruplays'), clicks: t.clicks })
-      : null;
-    const mixed = '<span class="no-data" title="Compras, conversaciones y ThruPlays no se suman entre sí">No se suman entre tipos</span>';
+
+  const costOf = campaign => ratio(campaign.spend, mainResult(campaign).value);
+  // El singular en espanol no sale de quitarle la ese al plural: "conversaciones" lleva tilde al
+  // singular y "ThruPlays" no es una palabra que se pueda declinar.
+  const RESULT_WORDS = {
+    Ventas: { plural: 'Compras', singular: 'compra' },
+    Mensajes: { plural: 'Conversaciones', singular: 'conversación' },
+    Reconocimiento: { plural: 'ThruPlays', singular: 'ThruPlay' },
+  };
+  const resultWords = group => RESULT_WORDS[group] || { plural: 'Clics', singular: 'clic' };
+
+  function campaignKpis(campaign, before, label) {
+    const result = mainResult(campaign);
+    const words = resultWords(campaign.group);
+    const cards = [
+      { label: words.plural, value: fmtCount(result.value), now: result.value, prev: before ? mainResult(before).value : null, better: 'up' },
+      { label: 'Inversión', value: fmtMoney(campaign.spend), now: campaign.spend, prev: before?.spend, better: null },
+      { label: `Costo por ${words.singular}`, value: fmtCost(costOf(campaign)), now: costOf(campaign), prev: before ? costOf(before) : null, better: 'down' },
+      { label: 'Alcance', value: fmtCount(campaign.reach), now: campaign.reach, prev: before?.reach, better: 'up' },
+      { label: 'Impresiones', value: fmtCount(campaign.impressions), now: campaign.impressions, prev: before?.impressions, better: 'up' },
+      { label: 'CPM', value: fmtMoney(campaign.cpm), now: campaign.cpm, prev: before ? ratio(before.spend * 1000, before.impressions) : null, better: 'down' },
+    ];
+    if (campaign.revenue > 0) {
+      const roas = ratio(campaign.revenue, campaign.spend);
+      cards.push({ label: 'ROAS', value: fmtRoas(roas), now: roas, prev: before?.revenue > 0 ? ratio(before.revenue, before.spend) : null, better: 'up' });
+    }
+    return `<div class="kpi-strip campaign-kpis">${cards.map(card => `
+      <div class="kpi-pill"><span>${esc(card.label)}</span><strong>${card.value}</strong>
+      ${label ? deltaHtml(card.now, card.prev, card.better, label) : '<small class="kpi-delta flat">Sin mes anterior</small>'}</div>`).join('')}</div>`;
+  }
+
+  // Conjuntos de anuncios de la campana. El tipo de resultado es el que mas resultados trae del conjunto:
+  // una campana de Mensajes mezcla conversaciones y visitas al perfil, y sumarlas no significaria nada.
+  function adSetsHtml(ads, campaign) {
+    const sets = new Map();
+    ads.forEach(ad => {
+      const name = ad.adSet || '(sin conjunto)';
+      const set = sets.get(name) || { name, ads: 0, kinds: {}, spend: 0, impressions: 0, reach: 0, clicks: 0 };
+      set.ads += 1;
+      ['spend', 'impressions', 'reach', 'clicks'].forEach(metric => { set[metric] += Number(ad[metric] || 0); });
+      if (ad.resultType) set.kinds[ad.resultType] = (set.kinds[ad.resultType] || 0) + Number(ad.results || 0);
+      sets.set(name, set);
+    });
+    const rows = [...sets.values()].sort((a, b) => b.spend - a.spend);
+    if (!rows.length) return '';
+    const body = rows.map(set => {
+      const [kind, results] = Object.entries(set.kinds).sort((a, b) => b[1] - a[1])[0] || ['', 0];
+      return `<tr>
+        <td class="campaign-name">${esc(set.name)}<small>${set.ads} ${set.ads === 1 ? 'anuncio' : 'anuncios'}</small></td>
+        <td>${kind ? `<span class="type-pill">${esc(kind)}</span>` : '<span class="no-data">—</span>'}</td>
+        <td class="num"><b>${results > 0 ? fmtCount(results) : '<span class="no-data">—</span>'}</b></td>
+        <td class="num">${results > 0 ? fmtCost(ratio(set.spend, results)) : '<span class="no-data">—</span>'}</td>
+        <td class="num">${fmtMoney(set.spend)}</td>
+        <td class="num">${fmtPct(ratio(set.spend * 100, campaign.spend))}</td>
+        <td class="num">${fmtCount(set.impressions)}</td>
+        <td class="num">${fmtCount(set.reach)}</td>
+        <td class="num">${fmtMoney(ratio(set.spend * 1000, set.impressions))}</td>
+        <td class="num">${fmtCount(set.clicks)}</td>
+      </tr>`;
+    }).join('');
     return `
-        <tr class="ads-total-row">
-          <td class="campaign-name">Total del periodo</td>
-          <td></td>
-          <td class="num">${fmtMoney(t.spend)}</td>
-          <td class="num">${fmtPct(ratio(t.spend * 100, month.kpis.spend))}</td>
-          <td class="num">${result ? `${fmtCount(result.value)} <small class="result-label">${result.label}</small>` : mixed}</td>
-          <td class="num">${fmtCount(t.impressions)}</td>
-          <td class="num">${fmtMoney(ratio(t.spend * 1000, t.impressions))}</td>
-          <td class="num">${fmtCount(t.clicks)}</td>
-          <td class="num">${fmtCost(ratio(t.spend, t.clicks))}</td>
-          <td class="num">${t.purchases ? fmtCount(t.purchases) : '—'}</td>
-          <td class="num">${t.revenue ? fmtMoney(t.revenue) : '—'}</td>
-          <td class="num">${t.revenue ? fmtRoas(ratio(t.revenue, t.spend)) : '—'}</td>
-          <td></td>
-        </tr>`;
+      <div class="adset-head"><div class="panel-title">Conjuntos de anuncios</div>
+        <div class="panel-sub">${rows.length} ${rows.length === 1 ? 'conjunto' : 'conjuntos'} con inversión en el periodo.</div></div>
+      <div class="table-scroll"><table class="data-table adset-table">
+        <thead><tr><th>Conjunto</th><th>Resultado</th><th class="num">Resultados</th><th class="num">Costo por resultado</th><th class="num">Inversión</th><th class="num">% de la campaña</th><th class="num">Impresiones</th><th class="num">Alcance</th><th class="num">CPM</th><th class="num">Clics</th></tr></thead>
+        <tbody>${body}</tbody></table></div>`;
+  }
+
+  function campaignAdsHtml(ads, campaign) {
+    const rows = [...ads].sort((a, b) => (b.results - a.results) || (b.spend - a.spend));
+    if (!rows.length) return '<p class="no-data">Sin detalle por anuncio en este periodo.</p>';
+    const leader = rows.find(ad => ad.results > 0);
+    const body = rows.map(ad => `<tr>
+      <td class="campaign-name">${ad === leader ? '<b class="leader-star" title="Líder de la campaña">★</b> ' : ''}${safeUrl(ad.url) ? `<a href="${safeUrl(ad.url)}" target="_blank" rel="noopener">${esc(ad.name)} <span aria-hidden="true">↗</span></a>` : esc(ad.name)}<small>${esc(ad.adSet || '—')}</small></td>
+      <td class="num"><b>${ad.results > 0 ? fmtCount(ad.results) : '<span class="no-data">—</span>'}</b></td>
+      <td class="num">${ad.results > 0 ? fmtCost(ratio(ad.spend, ad.results)) : '<span class="no-data">—</span>'}</td>
+      <td class="num">${fmtMoney(ad.spend)}</td>
+      <td class="num">${fmtPct(ratio(ad.spend * 100, campaign.spend))}</td>
+      <td class="num">${fmtCount(ad.impressions)}</td>
+      <td class="num">${fmtCount(ad.reach)}</td>
+      <td class="num">${fmtMoney(ratio(ad.spend * 1000, ad.impressions))}</td>
+      <td class="num">${fmtCount(ad.clicks)}</td>
+      <td class="num">${fmtCount(ad.days)}</td>
+    </tr>`).join('');
+    return `
+      <div class="adset-head"><div class="panel-title">Anuncios</div>
+        <div class="panel-sub">${rows.length} ${rows.length === 1 ? 'anuncio' : 'anuncios'}, de más a menos resultados. La estrella marca al líder.</div></div>
+      <div class="table-scroll"><table class="data-table adset-table">
+        <thead><tr><th>Anuncio</th><th class="num">Resultados</th><th class="num">Costo por resultado</th><th class="num">Inversión</th><th class="num">% de la campaña</th><th class="num">Impresiones</th><th class="num">Alcance</th><th class="num">CPM</th><th class="num">Clics</th><th class="num">Días activos</th></tr></thead>
+        <tbody>${body}</tbody></table></div>`;
+  }
+
+  function renderCampaigns(month) {
+    const shown = month.campaigns.filter(campaign => state.group === 'all' || campaign.group === state.group);
+    document.getElementById('campaigns-title').textContent = month.annual ? 'Campañas de 2026 (acumulado)' : `Campañas de ${month.name} 2026`;
+    document.getElementById('campaigns-sub').textContent = `${month.campaigns.length} campañas con inversión. Cada una con sus conjuntos y sus anuncios; el botón de la derecha minimiza el cuadro.`;
+    document.querySelectorAll('#campaigns-filter .series-toggle').forEach(item => item.classList.toggle('active', item.dataset.series === state.group));
+    const host = document.getElementById('campaign-blocks');
+    if (!host) return;
+    if (!shown.length) { host.innerHTML = '<p class="table-empty">Sin campañas de este tipo en el periodo.</p>'; return; }
+    const previous = previousMonthWithData(month.annual ? ANNUAL : month.name);
+    const label = previous ? previous.name : '';
+    const ads = adsOfMonth(month.annual ? ANNUAL : month.name);
+    host.innerHTML = shown.map(campaign => {
+      const key = campaign.name;
+      const open = !state.open.has(key);
+      const before = previous ? (previous.campaigns || []).find(item => item.name === campaign.name) : null;
+      const mine = ads.filter(ad => ad.campaign === campaign.name);
+      return `
+        <section class="campaign-block ${open ? '' : 'collapsed'}" data-key="${esc(key)}">
+          <div class="campaign-block-head">
+            <div>
+              <div class="campaign-block-title">${esc(campaign.name)} ${groupPill(campaign.group)}</div>
+              <div class="campaign-block-sub">${fmtMoney(campaign.spend)} · ${fmtPct(ratio(campaign.spend * 100, month.kpis.spend))} del periodo · ${mine.length} ${mine.length === 1 ? 'anuncio' : 'anuncios'}</div>
+            </div>
+            <button type="button" class="campaign-collapse" data-key="${esc(key)}" aria-expanded="${open}" title="${open ? 'Minimizar' : 'Expandir'} ${esc(campaign.name)}">${open ? '–' : '+'}</button>
+          </div>
+          <div class="campaign-block-body"${open ? '' : ' hidden'}>
+            ${campaignKpis(campaign, before, label)}
+            ${adSetsHtml(mine, campaign)}
+            ${campaignAdsHtml(mine, campaign)}
+          </div>
+        </section>`;
+    }).join('');
   }
   function renderMonth() {
     const month = current();
@@ -881,8 +972,9 @@
       if (card) { card.hidden = false; document.getElementById('data-status-btn')?.setAttribute('aria-expanded', 'true'); }
       syncFromDrive();
     });
-    document.getElementById('campaigns-body').addEventListener('click', event => {
-      const button = event.target.closest('.ads-expand');
+    // state.open guarda los cuadros MINIMIZADOS: por defecto se abren todos, como en Terminal Pesquero.
+    document.getElementById('campaign-blocks').addEventListener('click', event => {
+      const button = event.target.closest('.campaign-collapse');
       if (!button) return;
       const key = button.dataset.key;
       if (state.open.has(key)) state.open.delete(key); else state.open.add(key);

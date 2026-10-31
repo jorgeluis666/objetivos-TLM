@@ -2417,3 +2417,51 @@ body.ads-table-full { overflow: hidden; }
 .ads-board-table thead th:nth-child(1),
 .ads-board-table thead th:nth-child(2) { z-index: 4; }
 #view-ads.table-full .table-scroll { max-height: calc(100vh - 150px); }
+
+/* ── Campañas en marcos (v1.8.0) ───────────────────────────────────────────
+   Un cuadro por campaña, como en Terminal Pesquero, en vez de una fila por campaña. */
+.campaign-blocks { display: grid; gap: 14px; }
+
+.campaign-block {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.campaign-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.campaign-block-title { color: #06132b; font-size: 15px; font-weight: 700; }
+.campaign-block-title .group-pill { margin-left: 8px; vertical-align: 2px; }
+.campaign-block-sub { margin-top: 4px; color: #7b8da6; font-size: 12px; }
+
+.campaign-collapse {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.campaign-collapse:hover { border-color: #94a3b8; background: #f8fafc; }
+.campaign-block.collapsed { padding-bottom: 14px; }
+.campaign-kpis { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 14px 0 4px; }
+.adset-head { margin: 18px 0 10px; }
+.adset-head .panel-title { font-size: 14px; }
+.adset-head .panel-sub { font-size: 12px; }
+.adset-table .campaign-name small { display: block; margin-top: 3px; color: #94a3b8; font-weight: 400; }
+.adset-table .campaign-name a { color: inherit; text-decoration: none; }
+.adset-table .campaign-name a:hover { text-decoration: underline; }
