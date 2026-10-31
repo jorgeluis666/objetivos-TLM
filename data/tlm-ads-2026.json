@@ -1,9 +1,9 @@
 {
  "account": "The Little Market",
  "year": 2026,
- "cutoff": "2026-10-31",
+ "cutoff": "2026-10-30",
  "generatedAt": "2026-10-31",
- "syncedAt": "2026-10-31T03:46:07Z",
+ "syncedAt": "2026-10-31T03:48:46Z",
  "source": "Exportaciones de Meta Ads (Google Drive)",
  "platform": {
   "key": "meta",
@@ -2121,8 +2121,8 @@
   },
   {
    "name": "Octubre",
-   "status": "cerrado",
-   "period": "1 - 31 Octubre 2026",
+   "status": "parcial",
+   "period": "1 - 30 Octubre 2026",
    "sheet": {
     "title": "The Little Market - Octubre 2026",
     "id": "1NZo-P2M_qydG33Xao93f0MHhMrLS4mvgV8wi2mWCj5I"
