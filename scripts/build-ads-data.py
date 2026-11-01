@@ -68,7 +68,10 @@ NEXUS_COLUMNS = {
     'impressions': 'impressions', 'inline_link_clicks': 'clicks', 'purchases': 'purchases',
     'purchase_value': 'revenue', 'messages': 'conversations',
     'reach': 'reach', 'objective': 'objective', 'result_type': 'resultType', 'results': 'results',
+    'landing_page_views': 'landingViews', 'add_to_cart': 'addToCart', 'checkouts': 'checkouts',
 }
+# El embudo: si el destino no lo manda, el tablero lo avisa en vez de contarlo como cero.
+FUNNEL = ('landingViews', 'addToCart', 'checkouts')
 # Nexus guarda el indicador crudo de Meta; la exportacion trae el nombre en espanol que mira add().
 NEXUS_RESULTS = (('thruplay', 'ThruPlay'), ('messaging_conversation', 'Conversaciones con mensajes iniciadas'),
                  ('profile_visit', 'Visitas al perfil de Instagram'), ('purchase', 'Compras en el sitio web'))
@@ -80,8 +83,9 @@ NEXUS_OBJECTIVES = {
     'lead_generation': 'Clientes potenciales', 'messages': 'Mensajes', 'conversions': 'Conversiones',
     'reach': 'Alcance', 'video_views': 'Reproducciones de video',
 }
-# Lo que ese contrato no trae nunca; el alcance solo llega si el destino tiene "extended_fields".
-NEXUS_ABSENT = ('embudo', 'desglose por edad', 'vista previa')
+# Lo que ese contrato no trae nunca. El alcance y el embudo no estan aqui: se miran en los datos, porque
+# llegan si el destino los manda.
+NEXUS_ABSENT = ('desglose por edad', 'vista previa')
 SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
           'conversations', 'interactions']
 METRICS = SUMMED + ['profileVisits', 'thruplays']
@@ -440,9 +444,12 @@ def build(drive):
             continue
         from_nexus = [row for row in inside if row.get('nexus')]
         if from_nexus:
-            # Esos dias no suman embudo ni alcance: el tablero lo dice en la linea de fuente.
+            # Lo que esos dias no traen se dice en la linea de fuente del tablero. Embudo y alcance se
+            # miran en los datos y no se dan por perdidos: llegan si el destino los manda.
             nexus_days = sorted({row['day'] for row in from_nexus})
             missing = list(NEXUS_ABSENT)
+            if not any(num(row.get(key)) for row in from_nexus for key in FUNNEL):
+                missing.insert(0, 'embudo')
             if not any(num(row.get('reach')) for row in from_nexus):
                 missing.insert(0, 'alcance')
             entry['nexus'] = {'from': nexus_days[0].isoformat(), 'to': nexus_days[-1].isoformat(),
