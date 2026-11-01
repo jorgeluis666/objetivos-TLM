@@ -28,13 +28,18 @@ from datetime import date, datetime, timedelta, timezone
 
 import requests
 
-# Carpeta local -> ID de la carpeta en Drive (se puede cambiar por variable de entorno).
+# Carpeta local -> IDs de Drive (se pueden cambiar por variable de entorno). La de Meta son dos desde
+# noviembre de 2026: la historica, que llevan las personas, y la que Nexus crea y llena solo. Se recorren
+# en ese orden y el primer archivo con un nombre manda, asi un mes que este en las dos no se pisa.
 META_FOLDER = 'Meta files - The Little Market'
 REPORTS_FOLDER = 'Reportes - The Little Market'
 FOLDERS = {
-    META_FOLDER: os.environ.get('TLM_META_FOLDER_ID', '1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie'),
+    META_FOLDER: [
+        os.environ.get('TLM_META_FOLDER_ID', '1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie'),
+        os.environ.get('TLM_META_FOLDER_ID_NEXUS', '1T7yg2FkoIg81OaeSz9ojOC3X_3gl3Te1'),
+    ],
     # Archivo de Reportes: los PDF se descargan solo para saber su peso.
-    REPORTS_FOLDER: os.environ.get('TLM_REPORTS_FOLDER_ID', '17U5xr16eq1aLobF7LEHeb67KLg_D8aZe'),
+    REPORTS_FOLDER: [os.environ.get('TLM_REPORTS_FOLDER_ID', '17U5xr16eq1aLobF7LEHeb67KLg_D8aZe')],
 }
 LISTING_URL = 'https://drive.google.com/embeddedfolderview?id={id}'
 SHEET_EXPORT_URL = 'https://docs.google.com/spreadsheets/d/{id}/export?format=xlsx'
@@ -108,11 +113,12 @@ def fetch_with_retries(url, target):
         time.sleep(wait)
 
 
-def download_folder(folder_id, target_dir, extensions, sheets):
+def download_folder(folder_id, target_dir, extensions, sheets, taken):
     """Descarga lo que usan los scripts y devuelve el listado completo (con los IDs de Drive).
 
     Un archivo que no baja tras los reintentos no detiene la sincronizacion: queda en el manifest con
-    "error" (y sin "file") y build-ads-data.py lo pasa a los avisos del tablero."""
+    "error" (y sin "file") y build-ads-data.py lo pasa a los avisos del tablero.
+    `taken` son los nombres que ya trajo una carpeta anterior: esos no se vuelven a bajar."""
     entries = []
     for entry in list_folder(folder_id):
         item = {'id': entry['id'], 'name': entry['name'], 'mimeType': entry['mimeType'], 'modified': entry['modified'], 'file': None}
@@ -122,10 +128,16 @@ def download_folder(folder_id, target_dir, extensions, sheets):
         elif entry['name'].lower().endswith(extensions):
             item['file'] = entry['name']
             url = FILE_URL.format(id=entry['id'])
+        if item['file'] and item['file'] in taken:
+            item.update(file=None, repetido=True)
+            entries.append(item)
+            continue
         error = item['file'] and fetch_with_retries(url, os.path.join(target_dir, item['file']))
         if error:
             print(f'[drive] no se pudo descargar "{entry["name"]}" ({entry["id"]}): {error}', file=sys.stderr)
             item.update(file=None, error=error)
+        elif item['file']:
+            taken.add(item['file'])
         entries.append(item)
     return entries
 
@@ -135,18 +147,21 @@ def main():
     parser.add_argument('--out', required=True, help='Carpeta destino')
     args = parser.parse_args()
     manifest = {}
-    for local, folder_id in FOLDERS.items():
+    for local, folder_ids in FOLDERS.items():
         target_dir = os.path.join(args.out, local)
         os.makedirs(target_dir, exist_ok=True)
-        entries = download_folder(folder_id, target_dir, EXTENSIONS[local], sheets=local == META_FOLDER)
+        entries, taken = [], set()
+        for folder_id in folder_ids:
+            entries += download_folder(folder_id, target_dir, EXTENSIONS[local], local == META_FOLDER, taken)
         downloaded = [entry['file'] for entry in entries if entry['file']]
         failed = [entry['name'] for entry in entries if entry.get('error')]
         # Sin ninguna hoja de Meta se publicaria un tablero vacio: eso si detiene la sincronizacion.
         if not downloaded and failed and local == META_FOLDER:
-            sys.exit(f'No se pudo descargar ninguna hoja de la carpeta "{local}" ({folder_id}).')
+            sys.exit(f'No se pudo descargar ninguna hoja de la carpeta "{local}" ({", ".join(folder_ids)}).')
         if not downloaded and local == META_FOLDER:
-            sys.exit(f'La carpeta "{local}" ({folder_id}) no tiene hojas de calculo ni .xlsx.')
-        manifest[local] = {'folderId': folder_id, 'files': entries}
+            sys.exit(f'La carpeta "{local}" ({", ".join(folder_ids)}) no tiene hojas de calculo ni .xlsx.')
+        # "folderId" es el que abre el boton del tablero: el historico mientras dure la transicion.
+        manifest[local] = {'folderId': folder_ids[0], 'folderIds': folder_ids, 'files': entries}
         print(f'[drive] {local}: {len(downloaded)} descargados de {len(entries)} -> {", ".join(downloaded)}'
               + (f' | fallidos: {", ".join(failed)}' if failed else ''))
     with open(os.path.join(args.out, 'manifest.json'), 'w', encoding='utf-8') as handle:
