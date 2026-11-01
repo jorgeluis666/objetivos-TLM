@@ -3,7 +3,7 @@
  "year": 2026,
  "cutoff": "2026-10-31",
  "generatedAt": "2026-11-01",
- "syncedAt": "2026-11-01T00:37:16Z",
+ "syncedAt": "2026-11-01T17:31:03Z",
  "source": "Exportaciones de Meta Ads (Google Drive)",
  "platform": {
   "key": "meta",
@@ -7371,7 +7371,7 @@
   },
   {
    "name": "Octubre",
-   "status": "parcial",
+   "status": "cerrado",
    "period": "1 - 31 Octubre 2026",
    "sheet": {
     "title": "The Little Market - Octubre 2026",
@@ -8182,7 +8182,10 @@
    "name": "Noviembre",
    "status": "sin-datos",
    "period": null,
-   "sheet": null,
+   "sheet": {
+    "title": "The Little Market - Noviembre 2026",
+    "id": "1qZuG6sjpxldwat7yROiKb361p4H75lLFNzG-ilkmbN4"
+   },
    "firstDay": null,
    "lastDay": null,
    "kpis": null,
