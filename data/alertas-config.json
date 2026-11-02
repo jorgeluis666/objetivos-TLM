@@ -1,0 +1,10 @@
+{
+  "workspace": "Lima Retail · Dashboard The Little Market",
+  "url_dashboard": "https://tlm.limaretail.com/",
+  "from_name": "Lima Retail Alertas",
+  "from_email": "alertas@limaretail.com",
+  "destinatarios": [
+    { "email": "jorgeluis@limaretail.com", "nombre": "Jorge Luis" },
+    { "email": "diegomachuca@limaretail.com", "nombre": "Diego Machuca" }
+  ]
+}
