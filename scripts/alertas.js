@@ -130,7 +130,10 @@ const costoConvPrevio = previo && previo.kpis ? ratio((previo.spendByGroup || {}
 // ── Avisos y nivel ───────────────────────────────────────────
 // Rojo manda sobre ambar, y ambar sobre azul: el nivel del correo es el peor de los avisos.
 const avisos = [];
-avisos.push({ tone: 'blue', titulo: `Semana ${Math.ceil(diasCorridos / 7)} del mes`, cuerpo: `Datos al día ${diasCorridos} de ${diasMes}. Al ritmo de ahora, ${mes.name} cierra en ${moneyCorto(gastoCierre)}.` });
+// Proyectar el cierre de un mes que ya cerro no dice nada: entonces el aviso cuenta lo que paso.
+avisos.push(completo
+  ? { tone: 'blue', titulo: `${mes.name} cerrado`, cuerpo: `Los ${diasMes} días completos: ${money(K.spend)} invertidos.` }
+  : { tone: 'blue', titulo: `Semana ${Math.ceil(diasCorridos / 7)} del mes`, cuerpo: `Datos al día ${diasCorridos} de ${diasMes}. Al ritmo de ahora, ${mes.name} cierra en ${moneyCorto(gastoCierre)}.` });
 
 if (grupos.Ventas > 0 && roasReal != null && roasReal < 1) {
   avisos.push({ tone: 'red', titulo: `El ROAS va en ${roasReal.toFixed(2)}: las ventas no cubren la inversión`, cuerpo: `${money(grupos.Ventas)} en Ventas han devuelto ${money(K.revenue)}.` });
