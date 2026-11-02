@@ -180,7 +180,14 @@ avisos.forEach(a => console.log(`   · [${a.tone}] ${a.titulo}`));
 // Misma estetica del tablero: fondo claro, tarjetas blancas de borde fino, Inter y pildoras de color.
 const C = { bg: '#f6fbff', card: '#ffffff', border: '#dbeafe', text: '#0f172a', muted: '#64748b', brand: '#2563eb', red: '#dc2626', amber: '#b45309', green: '#15803d' };
 const FONT = "Inter,-apple-system,'Segoe UI',sans-serif";
-const TONO = { red: C.red, amber: C.amber, blue: C.brand };
+// El tono de un aviso se dice con la tarjeta entera —fondo suave y borde fino del mismo color en los
+// cuatro lados—, como en el correo de Aquarius. Nada de barras de acento al costado: estan prohibidas
+// en Lima Retail.
+const TONO = {
+  red:   { fg: '#b91c1c', bd: '#fecaca', box: '#fef2f2' },
+  amber: { fg: '#b45309', bd: '#fde68a', box: '#fffbeb' },
+  blue:  { fg: '#1d4ed8', bd: '#bfdbfe', box: '#eff6ff' },
+};
 const REPORTE_URL = config.url_dashboard.replace(/#.*$/, '').replace(/\/?$/, '/');
 
 const tarjeta = (rotulo, valor, sub) => `
@@ -206,15 +213,18 @@ const filaBloque = b => {
   </tr>`;
 };
 
-const avisoHTML = a => `
+const avisoHTML = a => {
+  const t = TONO[a.tone] || TONO.blue;
+  return `
   <tr><td style="padding:0 0 10px;">
-    <table role="presentation" width="100%" style="border:1px solid ${C.border};border-left:3px solid ${TONO[a.tone]};border-radius:10px;border-collapse:separate;">
+    <table role="presentation" width="100%" style="border:1px solid ${t.bd};border-radius:10px;border-collapse:separate;background:${t.box};">
       <tr><td style="padding:12px 14px;font-family:${FONT};">
-        <div style="font-size:13px;font-weight:700;color:${C.text};">${esc(a.titulo)}</div>
+        <div style="font-size:13px;font-weight:700;color:${t.fg};">${esc(a.titulo)}</div>
         <div style="font-size:12px;color:${C.muted};padding-top:3px;line-height:1.5;">${esc(a.cuerpo)}</div>
       </td></tr>
     </table>
   </td></tr>`;
+};
 
 const htmlEmail = `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"></head>
