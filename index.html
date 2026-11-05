@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/dashboard.css?v=1.10.0">
+<link rel="stylesheet" href="css/dashboard.css?v=1.11.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.10.0</span></div></div>
+    <div class="s-brand"><div class="s-title">The Little Market</div><div class="s-sub">BI Agencia Lima Retail <span class="app-version">v1.11.0</span></div></div>
     <div class="s-group-lbl">Módulos activos</div>
     <button title="Gasto publicitario" class="s-item active" type="button" data-view-target="view-obj">
       <div class="s-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
@@ -196,7 +196,7 @@
 
       <section class="view" id="view-reports">
         <h1 class="section-title">Archivo de Reportes</h1>
-        <p class="section-desc">Los reportes de The Little Market guardados en la carpeta compartida de Google Drive, y el generador del reporte semanal de Meta Ads de lunes a domingo, con el formato del último reporte subido.</p>
+        <p class="section-desc">Los reportes de The Little Market guardados en la carpeta compartida de Google Drive, y el generador del reporte mensual de Meta Ads con el formato estándar de la agencia, el mismo de todas las marcas.</p>
         <div class="month-tabs reports-tabs" role="tablist" aria-label="Archivo de Reportes">
           <button type="button" class="month-tab reports-tab active" role="tab" id="reports-tab-docs" aria-selected="true" aria-controls="reports-pane-docs" data-reports-tab="docs">Documentos en Drive</button>
           <button type="button" class="month-tab reports-tab" role="tab" id="reports-tab-week" aria-selected="false" aria-controls="reports-pane-week" data-reports-tab="week" tabindex="-1">Generación de Reporte</button>
@@ -248,13 +248,13 @@
         </div>
         <div class="reports-pane" id="reports-pane-week" role="tabpanel" aria-labelledby="reports-tab-week" hidden>
           <div class="panel week-toolbar">
-            <label class="reports-field" for="week-select"><span class="week-toolbar-label">Semana (lunes a domingo)</span><select id="week-select"><option value="">Cargando semanas...</option></select></label>
-            <div class="week-model" id="week-model"></div>
-            <div class="week-toolbar-actions">
-              <button type="button" class="report-btn" id="week-reset">Restaurar textos</button>
+            <label class="reports-field" for="week-select"><span class="week-toolbar-label">Mes del reporte</span><select id="week-select"><option value="">Cargando meses...</option></select></label>
+            <div class="week-toolbar-meta">
+              <div class="week-model" id="week-model"></div>
+              <button type="button" class="refresh-sheet-btn secondary" id="week-reset">Restaurar textos</button>
               <button type="button" class="refresh-sheet-btn" id="week-print">Descargar PDF</button>
             </div>
-            <p class="week-toolbar-note">Los textos de análisis y conclusiones vienen propuestos con los números de la semana: edítalos aquí antes de descargar. Se guardan en este navegador. Al descargar, elige "Guardar como PDF".</p>
+            <p class="week-toolbar-note">Formato estándar de la agencia, el mismo para todas las marcas. Los textos de análisis, destacados, conclusiones y próximos pasos vienen propuestos con los números del mes: haz clic sobre ellos para reescribirlos (**texto** va en negrita) antes de descargar. Se guardan en este navegador. Al descargar, elige "Guardar como PDF".</p>
           </div>
           <div id="week-report"></div>
         </div>
@@ -317,7 +317,7 @@
 <script src="js/projections.js?v=1.5.0"></script>
 <script src="js/bitacora.js?v=1.5.0"></script>
 <script src="js/reports-archive.js?v=1.5.0"></script>
-<script src="js/report-week.js?v=1.5.0"></script>
+<script src="js/report-week.js?v=1.6.0"></script>
 <script src="js/navigation.js?v=1.5.0"></script>
 <script src="js/sidebar.js?v=1.0.0"></script>
 <script src="auth-login.js?v=1.1.2"></script>

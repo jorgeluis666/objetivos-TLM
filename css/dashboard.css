@@ -1508,15 +1508,995 @@ body.modal-open {
 
 .reports-tabs .month-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-/* ===== Generar reporte semanal ===== */
+/* ===== Generacion de Reporte (diseño del modelo de la agencia) ===== */
+/* Cada pagina es una lamina 16:9 de 1280x720: en pantalla se achica con zoom para entrar en el
+   ancho del tablero y al imprimir sale a tamaño real, una lamina por hoja (13.33 x 7.5 in), sin
+   panel lateral, barra superior ni el resto de los modulos. */
 
 .week-toolbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 14px;
+  padding: 14px 18px;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px 18px;
-  margin-bottom: 16px;
 }
+
+.week-toolbar .reports-field select {
+  min-width: 290px;
+}
+
+.week-toolbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.week-model {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.week-model a {
+  color: var(--brand-text);
+  font-weight: 600;
+}
+
+.refresh-sheet-btn.secondary {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: var(--ink);
+}
+
+.refresh-sheet-btn.secondary:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.rp-deck {
+  --rp-ink: #0f172a;
+  --rp-text: #334155;
+  --rp-muted: #64748b;
+  --rp-faint: #94a3b8;
+  --rp-line: #dbe3ec;
+  --rp-blue: #2563eb;
+  --rp-blue-soft: #eef4ff;
+  --rp-red: #c8102e;
+  --rp-green: #16a34a;
+  display: grid;
+  gap: 18px;
+  color: var(--rp-ink);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.rp-page {
+  zoom: var(--rp-scale, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  padding: 26px 40px 0;
+  border: 1px solid var(--rp-line);
+  border-radius: 10px;
+  background: #f7f9fb;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
+}
+
+.rp-head h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.rp-head p {
+  margin: 4px 0 0;
+  color: var(--rp-text);
+  font-size: 14px;
+}
+
+.rp-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 13px;
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.rp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 52px;
+  flex: none;
+  color: var(--rp-muted);
+  font-size: 11px;
+}
+
+.rp-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rp-faint);
+}
+
+.rp-foot-right img {
+  width: 18px;
+  height: 18px;
+}
+
+.rp-foot-right b {
+  color: var(--rp-text);
+  font-weight: 600;
+}
+
+.rp-card {
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.rp-card-title {
+  padding: 18px 18px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rp-card-sub {
+  padding: 2px 18px 0;
+  color: var(--rp-muted);
+  font-size: 12px;
+}
+
+/* Portada */
+.rp-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.rp-brand img {
+  width: 44px;
+  height: 44px;
+}
+
+.rp-brand b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rp-brand span {
+  display: block;
+  color: var(--rp-muted);
+  font-size: 11px;
+}
+
+.rp-cover-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 20px;
+}
+
+.rp-cover h1 {
+  margin: 0;
+  font-size: 50px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+.rp-cover-client {
+  margin: 18px 0 0;
+  font-size: 23px;
+}
+
+.rp-cover-client b {
+  font-weight: 700;
+}
+
+.rp-cover-period {
+  margin: 6px 0 0;
+  color: var(--rp-muted);
+  font-size: 16px;
+  white-space: pre;
+}
+
+/* Contenido */
+.rp-contents {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-content: center;
+  gap: 15px;
+  padding-bottom: 20px;
+}
+
+.rp-toc {
+  padding: 18px;
+}
+
+.rp-toc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rp-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--rp-blue-soft);
+  color: var(--rp-blue);
+}
+
+.rp-icon.framed {
+  border: 1px solid #bfd3fb;
+}
+
+.rp-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.rp-toc-num {
+  color: #cbd5e1;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.rp-toc h3 {
+  margin: 16px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.rp-toc p {
+  margin: 6px 0 0;
+  color: var(--rp-muted);
+  font-size: 13px;
+}
+
+.rp-toc-page {
+  display: block;
+  margin-top: 16px;
+  color: var(--rp-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+/* Indicadores */
+.rp-grid-4,
+.rp-grid-3,
+.rp-grid-kpis {
+  display: grid;
+  gap: 13px;
+}
+
+/* La comparativa lleva un titular por objetivo, asi que su numero cambia con la cuenta: todos en
+   una fila, repartiendose el ancho de la lamina. */
+.rp-grid-kpis {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.rp-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.rp-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Los seis indicadores de la lamina de campana iban en 3x2 y se comian 202px de los 569 del cuerpo:
+   al grafico y a los anuncios les quedaban 156, el bloque mas pequeno de la lamina justo donde esta
+   la sustancia. En una fila ocupan 95 y la banda central recupera ese espacio. */
+.rp-section-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/* Una nota larga ("Suma de los dias · no son personas unicas") baja de linea en vez de salirse. */
+.rp-kpi .rp-delta.muted {
+  white-space: normal;
+}
+
+/* Destacado y analisis uno al lado del otro, como en los demas tableros: apilados sumaban 173px.
+   Con grid-auto-flow la lamina que solo trae analisis sigue ocupando el ancho entero. */
+.rp-duo {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 13px;
+}
+
+/* El analisis trae costo anterior y actual, que lo ocasiono, que replicar y que descartar: necesita
+   el doble de ancho que el destacado, que es un solo dato. */
+.rp-duo-wide {
+  grid-template-columns: 1fr 2.6fr;
+  grid-auto-flow: row;
+}
+
+.rp-duo-wide .rp-insight {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.rp-duo-wide .rp-insight p {
+  font-size: 12.5px;
+  line-height: 1.42;
+}
+
+/* Lamina con un analisis largo (fitPage en js/report-week.js): letra y piezas algo menores para que
+   la tarjeta de anuncios entre completa. */
+.rp-dense .rp-duo-wide .rp-insight p {
+  font-size: 11.5px;
+  line-height: 1.36;
+}
+
+.rp-dense .rp-ad-art {
+  max-height: 64px;
+}
+
+.rp-kpi {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 92px;
+  padding: 12px 16px;
+}
+
+.rp-kpi-label {
+  color: var(--rp-muted);
+  font-size: 11px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.rp-kpi strong {
+  margin: 6px 0 4px;
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+
+.rp-delta {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rp-delta.good {
+  color: var(--rp-green);
+}
+
+.rp-delta.bad {
+  color: var(--rp-red);
+}
+
+.rp-delta.muted {
+  color: var(--rp-muted);
+  font-weight: 400;
+}
+
+/* Tablas */
+.rp-table-card {
+  overflow: hidden;
+}
+
+.rp-table-card .rp-card-title {
+  padding-bottom: 12px;
+}
+
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.rp-table th {
+  padding: 8px 16px;
+  border-top: 1px solid var(--rp-line);
+  border-bottom: 1px solid var(--rp-line);
+  background: #f7f9fb;
+  color: var(--rp-muted);
+  font-size: 11px;
+  font-weight: 400;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.rp-table td {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rp-line);
+  color: var(--rp-ink);
+}
+
+.rp-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rp-table .rp-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-ads .rp-name {
+  font-weight: 400;
+}
+
+.rp-table tr.rp-top td {
+  background: var(--rp-blue-soft);
+}
+
+/* Comparativa: diez columnas con variacion y diferencia absoluta. El nombre del objetivo ya no se corta. */
+.rp-compare th,
+.rp-compare td {
+  padding-right: 10px;
+  padding-left: 10px;
+}
+
+/* Con cinco objetivos la tabla y el analisis (una linea por objetivo) no entraban por pocos pixeles. */
+.rp-compare td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.rp-compare .c-name {
+  width: 14%;
+}
+
+.rp-compare .c-money {
+  width: 7.5%;
+}
+
+.rp-compare .c-count,
+.rp-compare .c-cost {
+  width: 8%;
+}
+
+.rp-compare .c-var {
+  width: 12%;
+}
+
+.rp-compare .c-var-cost {
+  width: 14%;
+}
+
+.rp-compare .c-cause {
+  width: 13%;
+}
+
+.rp-ads tr.rp-top .rp-name {
+  font-weight: 600;
+}
+
+.rp-table a {
+  color: var(--rp-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rp-ads tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rp-table-foot {
+  padding: 11px 18px;
+  color: var(--rp-muted);
+  font-size: 12px;
+}
+
+.rp-empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--rp-muted);
+  font-size: 12px;
+}
+
+/* Grafico y mejores anuncios */
+.rp-split {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 17px;
+  flex: 1;
+  min-height: 0;
+}
+
+.rp-split > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* El titulo y el subtitulo van dentro del SVG, asi que la tarjeta solo aporta el margen. */
+.rp-chart-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 18px;
+}
+
+/* El viewBox (620 x 272) tiene la proporcion de la tarjeta: el grafico la llena sin franjas vacias
+   arriba y abajo, y sus textos no quedan diminutos. */
+.rp-chart {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.rp-chart-title {
+  fill: var(--rp-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rp-chart-sub,
+.rp-tick {
+  fill: var(--rp-faint);
+  font-size: 8.5px;
+}
+
+.rp-legend {
+  fill: var(--rp-text);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.rp-grid {
+  stroke: #e8edf3;
+  stroke-width: 1;
+}
+
+.rp-axis {
+  fill: var(--rp-text);
+  font-size: 8.5px;
+}
+
+/* Acumulado por dia: el mes en curso en rojo sobre el mes anterior en gris. */
+.rp-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rp-line.prev {
+  stroke: #94a3b8;
+  stroke-dasharray: 4 3;
+}
+
+.rp-line.cur {
+  stroke: var(--rp-red);
+}
+
+.rp-dot.prev {
+  fill: #94a3b8;
+}
+
+.rp-dot.cur {
+  fill: var(--rp-red);
+}
+
+/* Dia pico: anillo blanco con borde rojo, para distinguirlo de los cierres de semana. */
+.rp-dot.peak {
+  fill: #fff;
+  stroke: var(--rp-red);
+  stroke-width: 2;
+}
+
+.rp-point-value {
+  font-size: 9px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.rp-point-value.prev {
+  fill: #64748b;
+}
+
+.rp-point-value.cur {
+  fill: var(--rp-red);
+}
+
+/* Franja de resultados por dia, debajo del acumulado. */
+.rp-day {
+  fill: #f3c4cc;
+}
+
+.rp-day.peak {
+  fill: var(--rp-red);
+}
+
+.rp-peak-value {
+  fill: var(--rp-red);
+  font-size: 8.5px;
+  font-weight: 700;
+}
+
+/* Mejores anuncios: una tarjeta por anuncio con su pieza arriba, como en el modelo. */
+/* auto-fill guarda las columnas vacias: un anuncio solo ocupa su cuarto y no se estira a todo el ancho. */
+.rp-ad-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  padding: 10px 18px 10px;
+}
+
+/* Sin subtitulo bajo el rotulo, los 30px de aire de la cabecera salian de las piezas. */
+.rp-table-card .rp-card-title {
+  padding-top: 12px;
+  padding-bottom: 6px;
+}
+
+.rp-ad-card {
+  min-width: 0;
+}
+
+.rp-ad-art {
+  display: block;
+  width: 100%;
+  /* Tope de alto: en 4/5 una columna ancha haria crecer la pieza mas que la tarjeta. */
+  aspect-ratio: 4 / 5;
+  max-height: 74px;
+  border: 1px solid var(--rp-line);
+  border-radius: 6px;
+  object-fit: cover;
+  /* Claro: si una pieza no llega, el PDF muestra un recuadro vacio y no un bloque oscuro. */
+  background: #f1f5f9;
+}
+
+.rp-ad-art.is-empty {
+  display: grid;
+  border-style: dashed;
+  background: #f8fafc;
+  color: var(--rp-faint);
+  font-size: 10px;
+  font-weight: 700;
+  place-items: center;
+}
+
+/* El alto de la ficha no puede depender de lo largo que sea el nombre del anuncio: un nombre de tres
+   lineas empujaba las cifras fuera de la tarjeta. El nombre se queda en dos lineas y el conjunto y el
+   formato en una; el texto entero sigue en el title. */
+.rp-ad-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin-top: 7px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--rp-ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.rp-ad-meta {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--rp-muted);
+  font-size: 9.5px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-ad-figures {
+  margin: 6px 0 0;
+}
+
+.rp-ad-figures > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.rp-ad-figures dt {
+  color: var(--rp-muted);
+}
+
+.rp-ad-figures dd {
+  margin: 0;
+  color: var(--rp-ink);
+  font-weight: 700;
+}
+
+.rp-ad-figures dd.good {
+  color: var(--rp-green);
+}
+
+.rp-ad-figures dd.bad {
+  color: var(--rp-red);
+}
+
+/* La tarjeta de anuncios lleva al pie el costo por formato. */
+.rp-ads-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.rp-formats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: auto;
+  padding: 7px 18px 9px;
+  border-top: 1px solid var(--rp-line);
+}
+
+.rp-formats-title {
+  color: var(--rp-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.rp-format {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 9px;
+  border: 1px solid var(--rp-line);
+  border-radius: 6px;
+  background: #f8fafc;
+  line-height: 1.3;
+}
+
+.rp-format b {
+  color: var(--rp-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.rp-format span {
+  color: var(--rp-muted);
+  font-size: 9px;
+}
+
+.rp-format.best {
+  border-color: #bfd3fb;
+  background: var(--rp-blue-soft);
+}
+
+.rp-format.best b {
+  color: var(--rp-blue);
+}
+
+.rp-ad-thumb {
+  position: relative;
+  display: block;
+  text-decoration: none;
+}
+
+.rp-ad-link {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .92);
+  color: var(--rp-blue);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* Lectura y analisis */
+.rp-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex: none;
+  padding: 14px 16px;
+  border: 1px solid #bfd3fb;
+  border-radius: 8px;
+  background: var(--rp-blue-soft);
+}
+
+.rp-insight-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid #bfd3fb;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--rp-blue);
+}
+
+.rp-insight-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rp-insight > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rp-insight-label {
+  color: var(--rp-blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.rp-insight p {
+  margin: 4px 0 0;
+  color: var(--rp-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Conclusiones */
+.rp-conclusions {
+  align-items: stretch;
+}
+
+.rp-conclusion {
+  padding: 26px 28px;
+}
+
+.rp-concl-num {
+  color: var(--rp-faint);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rp-conclusion h3 {
+  margin: 22px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.rp-conclusion p {
+  margin: 16px 0 0;
+  color: var(--rp-text);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.rp-note {
+  padding: 13px 18px;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13.5px;
+}
+
+/* Cierre */
+.rp-closing {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  text-align: center;
+}
+
+.rp-closing img {
+  width: 100px;
+  height: 100px;
+}
+
+.rp-closing b {
+  margin-top: 18px;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.rp-closing span {
+  margin-top: 10px;
+  color: var(--rp-muted);
+  font-size: 13px;
+}
+
+.rp-closing .rp-closing-tag {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+/* Textos editables: en pantalla se marcan al pasar el mouse; en el PDF no se nota nada. */
+.rp-edit {
+  border-radius: 4px;
+  white-space: pre-wrap;
+  outline: none;
+  cursor: text;
+}
+
+.rp-edit:hover {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px #93c5fd;
+}
+
+.rp-edit:focus {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--rp-blue);
+}
+
+@media print {
+  @page {
+    size: 1280px 720px;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #f7f9fb;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sidebar,
+  .topbar,
+  .site-footer,
+  .reports-modal,
+  .view:not(#view-reports),
+  #view-reports > :not(#reports-pane-week),
+  #reports-pane-week > :not(#week-report) {
+    display: none !important;
+  }
+
+  .content {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rp-deck {
+    display: block;
+  }
+
+  .rp-page {
+    zoom: 1;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-after: page;
+    break-inside: avoid;
+  }
+
+  .rp-page:last-child {
+    break-after: auto;
+  }
+
+  .rp-edit:hover,
+  .rp-edit:focus {
+    box-shadow: none;
+  }
+}
+
+/* ===== Generacion de Reporte: piezas propias del modelo de The Little Market =====
+   Sobre la base de arriba (la lamina 16:9 de la agencia) van las piezas que pide el modelo
+   "Modelo Reporte TLM": el chip del periodo en la cabecera, la dona de distribucion, las barras
+   de desglose, el embudo de venta, las tarjetas de publico, los mejores anuncios en horizontal
+   y los proximos pasos. */
 
 .week-toolbar-label {
   display: block;
@@ -1528,177 +2508,525 @@ body.modal-open {
   text-transform: uppercase;
 }
 
-.week-toolbar .reports-field { min-width: 240px; }
-.week-model { flex: 1; min-width: 220px; padding-bottom: 9px; color: var(--muted); font-size: 11px; }
-.week-model a { color: var(--brand-text); font-weight: 700; }
-.week-toolbar-actions { display: flex; gap: 8px; align-items: center; }
-.week-toolbar-actions .report-btn { height: 34px; }
-.week-toolbar-note { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 11px; }
-.week-warn { margin-bottom: 16px; }
-.week-empty { padding: 26px; color: var(--muted); font-size: 12px; text-align: center; }
-
-.week-doc { display: grid; gap: 18px; }
-
-.week-slide {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 26px 30px 18px;
-  border: 1px solid var(--border);
-  border-top: 4px solid var(--gc, var(--brand));
-  border-radius: 11px;
-  background: #fff;
+.week-toolbar-note {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.week-slide-title { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
-.week-slide-title span { color: var(--gc, var(--brand)); }
-.week-slide-sub { margin-top: 4px; color: var(--muted); font-size: 13px; }
-.week-sub-title { margin-bottom: 8px; color: #475569; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-
-.week-slide-foot {
+/* La cabecera lleva el titulo a la izquierda y el periodo a la derecha, como el modelo. */
+.rp-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  color: #94a3b8;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: .05em;
+  gap: 28px;
+  flex: none;
 }
 
-.week-cover {
-  min-height: 360px;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  color: #fff;
-  background: linear-gradient(135deg, #0f172a 0%, #1f6158 100%);
+.rp-head > div {
+  min-width: 0;
+  max-width: 980px;
 }
 
-.week-cover-mark {
+.rp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  padding: 11px 16px;
+  border: 1px solid var(--rp-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--rp-ink);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rp-chip svg {
+  width: 17px;
+  height: 17px;
+  color: var(--rp-muted);
+}
+
+/* Una tarjeta cuya cifra es texto (el nombre de la campaña con mayor inversion) baja de tamaño. */
+.rp-kpi-text strong {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+/* La inicial de la marca sobre el titulo de la portada, como en el modelo. */
+.rp-cover-mark {
   display: grid;
-  width: 46px;
-  height: 46px;
   place-items: center;
-  margin-bottom: 18px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, .14);
-  font-size: 22px;
-  font-weight: 800;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 26px;
+  border-radius: 14px;
+  background: var(--rp-blue);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
 }
 
-.week-cover-title { font-size: 40px; font-weight: 800; letter-spacing: -.03em; }
-.week-cover-period { color: #99d5cb; font-size: 18px; font-weight: 700; }
-.week-cover-meta { display: grid; gap: 4px; margin-top: 18px; color: rgba(255, 255, 255, .85); font-size: 13px; }
-.week-cover-foot { margin-top: 28px; color: rgba(255, 255, 255, .55); font-size: 10px; font-weight: 700; letter-spacing: .12em; line-height: 1.7; }
-.week-closing { min-height: 220px; align-items: center; text-align: center; }
+/* Conclusiones y proximos pasos entran en una sola lamina: el modelo las lleva mas juntas. */
+.rp-conclusion {
+  padding: 20px 24px;
+}
 
-.week-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.rp-conclusion h3 {
+  margin-top: 16px;
+  font-size: 19px;
+}
 
-.week-kpi {
+.rp-conclusion p {
+  margin-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.rp-note {
+  padding: 10px 16px;
+  font-size: 12.5px;
+}
+
+/* Tarjeta blanca con cabecera de icono: "Análisis", "Embudo y públicos de venta", etc. */
+.rp-panel {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: #f8fafc;
-}
-
-.week-kpi strong { color: var(--ink); font-size: 18px; font-weight: 800; }
-.week-kpi span { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.week-delta { font-size: 10px; font-weight: 700; }
-.week-delta.up { color: var(--green-text); }
-.week-delta.down { color: #b91c1c; }
-.week-delta.flat { color: #94a3b8; }
-
-.week-summary { display: grid; gap: 14px; }
-.week-summary-row { padding-left: 12px; border-left: 3px solid var(--gc); }
-.week-summary-name { margin-bottom: 8px; color: var(--ink); font-size: 13px; font-weight: 800; }
-.week-summary-name small { color: #94a3b8; font-weight: 600; }
-
-.week-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.week-donut { position: relative; height: 240px; }
-.week-dot { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 3px; vertical-align: 0; }
-.week-table td, .week-table th { padding: 8px 10px; }
-.week-table a { color: var(--brand-text); font-weight: 700; text-decoration: none; white-space: nowrap; }
-.week-ad-name { color: var(--ink) !important; font-weight: 600; }
-.week-total td { border-top: 1px solid var(--border); font-weight: 700; background: #f8fbff; }
-
-.week-callout {
-  padding: 11px 14px;
-  border-radius: 9px;
-  color: #334155;
-  background: #f1f5f9;
-  background: color-mix(in srgb, var(--gc, var(--brand)) 9%, #fff);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.week-callout b { color: var(--gc, var(--brand)); }
-
-.week-edit textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 9px;
-  color: #334155;
+  min-height: 0;
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
   background: #fff;
-  font: inherit;
+}
+
+.rp-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--rp-line);
+}
+
+.rp-panel-head .rp-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.rp-panel-head .rp-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.rp-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rp-panel-sub {
+  margin-top: 1px;
+  color: var(--rp-muted);
+  font-size: 12.5px;
+}
+
+.rp-panel-body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 18px;
+}
+
+.rp-panel-body .rp-edit {
+  margin: 0;
+  color: var(--rp-text);
+  font-size: 13.5px;
+  line-height: 1.62;
+}
+
+.rp-panel-body .rp-edit b {
+  color: var(--rp-ink);
+}
+
+/* Distribucion de inversion: dona a la izquierda, tabla a la derecha. */
+.rp-dist {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  align-items: center;
+  gap: 26px;
+  padding: 18px 22px 22px;
+}
+
+.rp-donut {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.rp-donut svg {
+  width: 232px;
+  height: 232px;
+  transform: rotate(-90deg);
+}
+
+.rp-donut-center {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.rp-donut-center strong {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.rp-donut-center span {
+  color: var(--rp-muted);
   font-size: 12px;
-  line-height: 1.55;
-  resize: vertical;
 }
 
-.week-edit textarea:hover { border-color: #94a3b8; }
-.week-edit textarea:focus-visible { border-style: solid; border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(42, 130, 118, .18); }
-.week-print-text { display: none; white-space: pre-wrap; color: #334155; font-size: 12px; line-height: 1.55; }
-
-.week-conclusions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.week-conclusion { padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; }
-.week-conclusion > b { display: block; margin-bottom: 6px; color: var(--brand); font-size: 18px; }
-
-@media (max-width: 1100px) {
-  .week-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rp-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 9px;
+  border-radius: 3px;
+  vertical-align: baseline;
 }
 
-@media (max-width: 760px) {
-  .week-slide { padding: 20px 16px 14px; }
-  .week-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .week-cols, .week-conclusions { grid-template-columns: 1fr; }
-  .week-cover-title { font-size: 30px; }
-  .week-slide-foot { flex-direction: column; }
-  .week-toolbar .reports-field { min-width: 100%; }
+.rp-table tr.rp-total td {
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+  border-bottom: 0;
 }
 
-/* El PDF del reporte semanal: una lamina por pagina (A4 horizontal), sin el resto del tablero. */
-@media print {
-  @page { size: A4 landscape; margin: 8mm; }
-  body.printing-week { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body.printing-week .sidebar,
-  body.printing-week .topbar,
-  body.printing-week .site-footer,
-  body.printing-week .view:not(#view-reports),
-  body.printing-week #view-reports > .section-title,
-  body.printing-week #view-reports > .section-desc,
-  body.printing-week .reports-tabs,
-  body.printing-week #reports-pane-docs,
-  body.printing-week .week-toolbar,
-  body.printing-week .week-warn,
-  body.printing-week .reports-modal,
-  body.printing-week .s-wa { display: none !important; }
-  body.printing-week .shell,
-  body.printing-week .main,
-  body.printing-week .content { display: block !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
-  body.printing-week .week-doc { display: block; }
-  body.printing-week .week-slide { min-height: 186mm; margin: 0; break-after: page; break-inside: avoid; border-radius: 0; }
-  body.printing-week .week-slide:last-child { break-after: auto; }
-  body.printing-week .week-edit textarea { display: none; }
-  body.printing-week .week-print-text { display: block; }
-  body.printing-week .table-scroll { overflow: visible !important; }
+.rp-table tr.rp-total td:first-child {
+  border-radius: 7px 0 0 7px;
+}
+
+.rp-table tr.rp-total td:last-child {
+  border-radius: 0 7px 7px 0;
+}
+
+/* Barras de desglose: etiqueta, barra y cifra. Es la forma del modelo para repartos simples. */
+.rp-bars {
+  display: grid;
+  gap: 11px;
+}
+
+.rp-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 210px) 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.rp-bar-label {
+  overflow: hidden;
+  color: var(--rp-ink);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-bar-track {
+  position: relative;
+  height: 24px;
+  border-radius: 6px;
+  background: #eef2f7;
+}
+
+.rp-bar-fill {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 10px;
+  padding: 0 11px;
+  border-radius: 6px;
+  background: var(--rp-blue);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.rp-bar-fill.soft {
+  background: #cbd5e1;
+  color: #475569;
+}
+
+.rp-bar-value {
+  color: var(--rp-text);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* Tarjetas de publico (remarketing / publico amplio) con su ROAS, una al lado de la otra. */
+.rp-aud {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 14px;
+}
+
+.rp-aud.one {
+  grid-template-columns: 1fr;
+}
+
+.rp-aud-card {
+  padding: 11px 14px;
+  border: 1px solid var(--rp-line);
+  border-left: 4px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.rp-aud-card.best {
+  border-color: #bfd3fb;
+  border-left-color: var(--rp-green);
+  background: var(--rp-blue-soft);
+}
+
+.rp-aud-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rp-aud-name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-aud-roas {
+  flex: none;
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rp-aud-card.best .rp-aud-roas {
+  color: var(--rp-blue);
+}
+
+.rp-aud-figs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 7px;
+}
+
+.rp-aud-figs dt {
+  color: var(--rp-muted);
+  font-size: 11px;
+}
+
+.rp-aud-figs dd {
+  margin: 1px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* Mejores anuncios: tarjeta horizontal, la pieza a la izquierda y las cifras a la derecha. */
+.rp-best {
+  flex: none;
+}
+
+.rp-best-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+  color: var(--rp-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.rp-best-head svg {
+  width: 15px;
+  height: 15px;
+}
+
+.rp-best-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.rp-best-card {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.rp-best-card.best {
+  border-color: #bfd3fb;
+  background: var(--rp-blue-soft);
+}
+
+.rp-best-thumb {
+  width: 92px;
+  flex: none;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.rp-best-body {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 15px;
+}
+
+.rp-best-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.rp-best-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-best-tag {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--rp-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--rp-muted);
+  font-size: 11px;
+}
+
+.rp-best-figs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 22px;
+}
+
+.rp-best-figs div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rp-best-figs dt {
+  color: var(--rp-text);
+  font-size: 12.5px;
+}
+
+.rp-best-figs dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rp-best-figs dd.mark {
+  color: var(--rp-blue);
+}
+
+.rp-best-note {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 18px;
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.rp-best-note b {
+  font-size: 13.5px;
+}
+
+.rp-best-note span {
+  margin-top: 3px;
+  color: var(--rp-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Proximos pasos: una fila por paso, la primera resaltada. */
+.rp-steps {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.rp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 12px 15px;
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+}
+
+.rp-step.first {
+  border-color: #bfd3fb;
+  background: var(--rp-blue-soft);
+}
+
+.rp-step .rp-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 8px;
+}
+
+.rp-step .rp-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rp-step-body {
+  min-width: 0;
+}
+
+.rp-step-body .rp-edit {
+  margin: 0;
+}
+
+.rp-step-body h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.rp-step-body p {
+  margin: 2px 0 0;
+  color: var(--rp-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.rp-pile {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-height: 0;
+}
+
+.rp-pile > .rp-panel {
+  flex: 1;
 }
 
 /* ===== Alineado con el tablero de Terminal Pesquero (referencia visual de LR) ===== */

@@ -151,7 +151,7 @@ mismo gasto contado tres veces y sumarlos lo triplicaria. El contrato trae menos
 exportacion, asi que esos dias **no suman embudo (visitas a la web, carrito, pagos iniciados), ni desglose
 por edad y sexo, ni vista previa del anuncio**, y tampoco alcance ni ThruPlays salvo que el destino de esa
 cuenta en Nexus tenga activado `extended_fields`. Edad y sexo van como `Unknown`, la etiqueta que Meta usa
-para lo que no sabe y que el reporte semanal ya descarta al elegir su segmento.
+para lo que no sabe y que el tablero ya descarta al elegir su segmento.
 
 Nexus guarda los nombres crudos de Meta, asi que el barrido los traduce a los de la exportacion antes de
 mezclarlos: el indicador del resultado (`video_thruplay_watched_actions` pasa a `ThruPlay`, y de ahi salen
@@ -226,19 +226,27 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
   vista previa, enlace a Drive y descarga. El workflow la lista en cada sincronizacion
   (`scripts/drive-download.py` + `scripts/update-reports-catalog.py` -> `data/tlm-drive-reports.json`). La fecha es
   la de "Ultima modificacion" de la vista publica de Drive.
-- **Generar reporte semanal:** el reporte de Meta Ads de una semana cerrada de lunes a domingo (las ultimas 12),
-  frente a la semana anterior, con las laminas del ultimo reporte subido a la carpeta: portada, resumen
-  ejecutivo, distribucion de la inversion, Ventas (con embudo), Mensajes (con segmentacion por edad y sexo),
-  Reconocimiento, conclusiones y cierre.
-  - Datos: `data/tlm-ads-daily.json`, que `build-ads-data.py` escribe con las filas por dia, campana y anuncio de
-    las ultimas 15 semanas, y aparte la segmentacion por dia, grupo, edad y sexo.
-  - Los textos de analisis y conclusiones vienen propuestos con los numeros; se editan en pantalla y quedan
-    guardados por semana en el navegador (`tlm-week-notes-v1`). "Restaurar textos" vuelve a los propuestos.
-  - "Descargar PDF" abre la impresion del navegador (A4 horizontal, una lamina por pagina) con el nombre
-    `The-Little-Market-Reporte-Ads-Semanal-<dias>-<Mes>-<Ano>`. Al subir ese PDF a la carpeta, Documentos lo
-    reconoce como reporte semanal.
-  - Si la descarga de Meta no llega al domingo, avisa que faltan dias.
-  - El alcance es la suma de las filas diarias, no el alcance sin duplicar de Meta.
+- **Generacion de Reporte:** el reporte **mensual** de Meta Ads con el **formato estandar de la agencia**
+  ("Modelo Reporte TLM"), el mismo de todas las marcas: laminas 16:9 de 1280x720, tarjetas blancas de borde
+  fino y acentos en azul. Diez laminas: portada, contenido, resumen ejecutivo, distribucion de la inversion,
+  una lamina por objetivo (Ventas e-commerce, Mensajes WhatsApp, Mensajes a tienda y Reconocimiento),
+  conclusiones con proximos pasos y cierre.
+  - Datos: `data/tlm-ads-2026.json`, el mismo barrido de Meta que alimenta Gasto publicitario, con una fila
+    por anuncio del mes y su conjunto. Se elige el mes arriba; el periodo va del dia 1 al ultimo dia con datos.
+  - Las dos campanas de mensajes van en laminas distintas porque no son lo mismo: el conjunto de WhatsApp
+    general apunta a publico amplio y el de tienda solo al radio de 3 km alrededor del local (se reconoce por
+    el nombre del conjunto), asi que sus costos por conversacion no son comparables. Si un mes no tuvo
+    campana local, esa lamina no se dibuja.
+  - Los textos (bajada, destacado, analisis, conclusiones y proximos pasos) vienen propuestos con los numeros;
+    se reescriben con un clic sobre la misma lamina (`**texto**` va en negrita) y quedan guardados por mes en
+    el navegador (`tlm-report-notes-v2`). "Restaurar textos" vuelve a los propuestos.
+  - "Descargar PDF" abre la impresion del navegador (una lamina por pagina, 1280x720) con el nombre
+    `The-Little-Market-Reporte-Meta-Ads-<Mes>-<Ano>`.
+  - El alcance es la **suma de las filas diarias**, no el alcance sin duplicar de Meta: las tarjetas lo dicen
+    ("Suma diaria") y por eso la frecuencia que sale de ahi es menor que la de la plataforma. Para publicarlo
+    como personas unicas haria falta traer el alcance del mes desde Meta, que la exportacion por dia no trae.
+  - La descarga de Meta no trae el formato de la pieza: una tarjeta de anuncio solo dice "Video" cuando hay
+    ThruPlays, que unicamente mide un video; sin ellos no se afirma el formato.
 
 ## Proyecciones
 

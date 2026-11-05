@@ -1,90 +1,104 @@
 (function (global) {
-  // Archivo de Reportes > Generar reporte. El reporte de Meta Ads de una semana de lunes a domingo frente a
-  // la semana anterior, con las mismas laminas que el ultimo reporte subido a la carpeta de Drive: portada,
-  // resumen ejecutivo, distribucion de la inversion, una lamina por grupo de campanas (Ventas, Mensajes,
-  // Reconocimiento) con sus mejores anuncios, conclusiones y cierre.
-  // Datos: data/tlm-ads-daily.json (scripts/build-ads-data.py), filas por dia, campana y anuncio de las
-  // ultimas semanas. Los textos de analisis y conclusiones vienen propuestos con los numeros; el equipo los
-  // edita y quedan guardados por semana en este navegador. El PDF sale del dialogo de impresion del navegador.
+  // Archivo de Reportes > Generación de Reporte: el PDF mensual de publicidad con el formato estandar de la
+  // agencia ("Modelo Reporte TLM"), el mismo de todas las marcas: laminas 16:9 de 1280x720 con tarjetas
+  // blancas de borde fino y acentos en azul. Portada, contenido, resumen ejecutivo, distribucion de la
+  // inversion, una lamina por objetivo (ventas, mensajes de WhatsApp, mensajes a tienda y reconocimiento),
+  // conclusiones con proximos pasos y cierre.
+  //
+  // No trae datos nuevos: sale de data/tlm-ads-2026.json (scripts/build-ads-data.py), el mismo barrido de
+  // Meta Ads que alimenta el resto del tablero, con una fila por anuncio del mes y su conjunto. El reporte
+  // es mensual, como el modelo: se elige el mes arriba y el periodo va del dia 1 al ultimo dia con datos.
+  //
+  // Las dos campañas de mensajes van en laminas distintas porque no son lo mismo: el conjunto de WhatsApp
+  // general apunta a publico amplio y el de tienda solo al radio de 3 km alrededor del local, asi que sus
+  // costos por conversacion no son comparables entre si.
+  //
+  // La bajada de cada lamina, el destacado, el analisis, las conclusiones y los proximos pasos vienen
+  // propuestos con lo que dicen los numeros; el equipo los reescribe sobre la misma lamina (clic en el
+  // texto, **negrita** con asteriscos) y quedan guardados por mes en este navegador. El PDF sale del
+  // dialogo de impresion del navegador.
+  //
   // Expone window.TLMReportWeek = { init }.
-  const DATA_URL = 'data/tlm-ads-daily.json';
-  const WEEKS_IN_LIST = 12;
-  const TOP_ADS = 3;
-  const NOTES_KEY = 'tlm-week-notes-v1';
+  const DATA_URL = 'data/tlm-ads-2026.json';
+  const NOTES_KEY = 'tlm-report-notes-v2';
   const BRAND = 'The Little Market';
+  const SLUG = 'The-Little-Market';
+  const CHANNEL = 'Meta Ads';
+  const LOGO = 'assets/logo-lima-retail.png';
+  const AGENCY_LINE = 'Lima Retail · Data Driven Marketing · Power KPI · Digital Analytics';
+  const PAGE_WIDTH = 1280;
   const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  const SEX = { female: 'Mujeres', male: 'Hombres', unknown: 'Sin dato' };
-  // Los grupos de Gasto publicitario, cada uno con el resultado que mide (como en el reporte de la carpeta).
-  const GROUPS = {
-    Ventas: {
-      key: 'Ventas', label: 'Ventas E-Commerce', short: 'E-Commerce (Ventas)', color: '#2a8276', field: 'purchases', one: 'compra', many: 'compras', unit: 'compras',
-      kpis: [['spend', 'Inversión'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['addToCart', 'Añadidos carrito']],
-      summary: [['spend', 'Inversión'], ['purchases', 'Compras'], ['roas', 'ROAS'], ['revenue', 'Valor conv.'], ['reach', 'Alcance']],
-      adCols: [['purchases', 'Compras'], ['addToCart', 'Carrito'], ['spend', 'Gasto']], topTitle: 'Top anuncios por ventas',
-    },
-    Mensajes: {
-      key: 'Mensajes', label: 'Mensajes & Tráfico al Perfil', short: 'Mensajes & Tráfico', color: '#16a34a', field: 'conversations', one: 'mensaje', many: 'mensajes', unit: 'msg',
-      kpis: [['spend', 'Inversión'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
-      summary: [['spend', 'Inversión'], ['conversations', 'Mensajes'], ['cost', 'Costo/mensaje'], ['clicks', 'Clics'], ['reach', 'Alcance']],
-      adCols: [['conversations', 'Mensajes'], ['clicks', 'Clics'], ['spend', 'Gasto']], topTitle: 'Top anuncios por mensajes',
-    },
-    Reconocimiento: {
-      key: 'Reconocimiento', label: 'Reconocimiento', short: 'Reconocimiento', color: '#7c3aed', field: 'thruplays', one: 'reproducción', many: 'reproducciones', unit: 'repr.',
-      kpis: [['spend', 'Inversión'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
-      summary: [['spend', 'Inversión'], ['thruplays', 'Reproducciones'], ['cost', 'Costo/repr.'], ['reach', 'Alcance'], ['clicks', 'Clics']],
-      adCols: [['thruplays', 'Reproduc.'], ['spend', 'Gasto']], topTitle: 'Top anuncios por reproducciones',
-    },
+  // Un color por objetivo, en el orden del modelo: el mismo en la dona, en la tabla y en las barras.
+  const BLUE = '#2563eb';
+  const TEAL = '#14b8a6';
+  const AMBER = '#f59e0b';
+  const SLATE = '#94a3b8';
+  // Mejores anuncios de cada lamina. Si una sola pieza concentra esto de los resultados, va sola y al lado
+  // se resume el resto: es lo que hace el modelo cuando una linea creativa se lleva casi todo.
+  const TOP_ADS = 2;
+  const DOMINANT = 0.6;
+  const METRICS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts',
+    'purchases', 'revenue', 'conversations', 'profileVisits', 'thruplays', 'results'];
+
+  // Iconos de linea (24x24) del contenido, las tarjetas y las conclusiones.
+  const ICONS = {
+    briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>',
+    layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+    cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.3 11.4a2 2 0 0 0 2 1.6h8.1a2 2 0 0 0 2-1.6L21 7H5.2"/>',
+    chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>',
+    store: '<path d="M4 9.5V20h16V9.5"/><path d="M3 4h18l1 5.5a3 3 0 0 1-5.5 1.8 3 3 0 0 1-5 0 3 3 0 0 1-5 0A3 3 0 0 1 2 9.5z"/><path d="M9.5 20v-5h5v5"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    flag: '<path d="M4 22V4"/><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1"/>',
+    chart: '<path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V8"/><path d="M18 17v-3"/>',
+    bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+    pin: '<path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+    users: '<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 5.3a3.4 3.4 0 0 1 0 6.6"/><path d="M18.5 14.4a6.5 6.5 0 0 1 3 5.6"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   };
-  const ORDER = ['Ventas', 'Mensajes', 'Reconocimiento'];
-  const OTHER = { key: 'Otros', label: 'Otras campañas', short: 'Otras campañas', color: '#64748b', field: 'clicks', one: 'clic', many: 'clics', unit: 'clics', kpis: [], summary: [], adCols: [['clicks', 'Clics'], ['spend', 'Gasto']], topTitle: 'Top anuncios' };
-  const FIELDS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue', 'conversations', 'thruplays', 'profileVisits'];
+  const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.chart}</svg>`;
 
   let data = null;
   let loading = null;
   let selected = '';
-  let charts = [];
   let wired = false;
+  let resizeObserver = null;
 
-  // ── Formato (el del tablero: "S/" y es-PE) ──
+  // ── Formato (el del modelo: "S/ 1,121", "33.6 mil", es-PE) ─────────────
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-  const safeUrl = value => /^https:\/\/(www\.)?facebook\.com\//i.test(String(value || '')) ? String(value) : '';
-  const isNum = value => value != null && Number.isFinite(value);
-  const money = (value, digits = 2) => isNum(value) ? `S/. ${value.toLocaleString('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits })}` : '—';
-  const count = value => isNum(value) ? Math.round(value).toLocaleString('es-PE') : '—';
-  const unitCost = value => isNum(value) ? money(value, value < 0.1 ? 3 : 2) : '—';
-  const roasFmt = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : '—';
-  const pct = value => isNum(value) ? `${value.toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—';
-  const ratio = (value, base) => base > 0 ? value / base : null;
-  const plural = (value, group) => Math.round(value) === 1 ? group.one : group.many;
+  const safeUrl = value => (/^https:\/\/(www\.)?facebook\.com\//i.test(String(value || '')) ? String(value) : '');
+  const finite = value => value != null && Number.isFinite(Number(value));
+  const integer = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 0 });
+  const decimalFormats = new Map();
+  const decimals = (value, digits) => {
+    if (!decimalFormats.has(digits)) decimalFormats.set(digits, new Intl.NumberFormat('es-PE', { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+    return decimalFormats.get(digits).format(Number(value));
+  };
+  const num = value => (finite(value) ? integer.format(Math.round(value)) : '—');
+  const money = value => (finite(value) ? `S/ ${integer.format(Math.round(value))}` : '—');
+  const money2 = value => (finite(value) ? `S/ ${decimals(value, 2)}` : '—');
+  const cost = value => (finite(value) && value > 0 ? `S/ ${decimals(value, 2)}` : '—');
+  const ratio2 = value => (finite(value) ? decimals(value, 2) : '—');
+  const pct = value => (finite(value) ? `${Math.round(value)}%` : '—');
+  // "33.6k" para tablas y barras; "33.6 mil" para la cifra grande de una tarjeta, como el modelo.
+  const compact = value => (!finite(value) ? '—' : value >= 1e6 ? `${decimals(value / 1e6, 1)}M` : value >= 1000 ? `${decimals(value / 1000, 1)}k` : integer.format(Math.round(value)));
+  const thousands = value => (!finite(value) ? '—' : value >= 1000 ? `${decimals(value / 1000, 1)} mil` : integer.format(Math.round(value)));
+  const pageNumber = value => String(value).padStart(2, '0');
+  const divide = (value, base) => (base > 0 ? value / base : null);
+  const cap = value => String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
+  const listOf = items => (items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}` : items[0] || '');
+  // **texto** va en negrita, como "Qué pasó:" en el modelo.
+  const rich = text => esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
-  // ── Fechas (los dias del informe estan en hora de Lima) ──
+  // Los dias del informe estan en hora de Lima.
   const todayIso = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
-  const shift = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
-  const mondayOf = day => shift(day, -((new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7));
-  const dayLabel = day => `${Number(day.slice(8, 10))} ${SHORT[Number(day.slice(5, 7)) - 1]}`;
-  // "12 - 18 oct 2026"; si cruza de mes, "28 sep - 4 oct 2026".
-  function rangeLabel(monday, year = true) {
-    const sunday = shift(monday, 6);
-    const start = monday.slice(5, 7) === sunday.slice(5, 7) ? String(Number(monday.slice(8, 10))) : dayLabel(monday);
-    return `${start} - ${dayLabel(sunday)}${year ? ` ${sunday.slice(0, 4)}` : ''}`;
-  }
-  // "12-18 de octubre, 2026", como la portada del reporte de la carpeta.
-  function longRange(monday) {
-    const sunday = shift(monday, 6);
-    const month = date => MONTHS[Number(date.slice(5, 7)) - 1];
-    const start = monday.slice(5, 7) === sunday.slice(5, 7) ? String(Number(monday.slice(8, 10))) : `${Number(monday.slice(8, 10))} de ${month(monday)}`;
-    return `${start} - ${Number(sunday.slice(8, 10))} de ${month(sunday)}, ${sunday.slice(0, 4)}`;
-  }
-  // Nombre del PDF con la convencion de la carpeta: The-Little-Market-Reporte-Ads-Semanal-12-18-Octubre-2026.
-  function fileName(monday) {
-    const sunday = shift(monday, 6);
-    const month = date => { const name = MONTHS[Number(date.slice(5, 7)) - 1]; return name.charAt(0).toUpperCase() + name.slice(1); };
-    const start = monday.slice(5, 7) === sunday.slice(5, 7) ? `${Number(monday.slice(8, 10))}` : `${Number(monday.slice(8, 10))}-${month(monday)}`;
-    return `The-Little-Market-Reporte-Ads-Semanal-${start}-${Number(sunday.slice(8, 10))}-${month(sunday)}-${sunday.slice(0, 4)}`;
-  }
+  const issuedLabel = () => {
+    const [year, month, day] = todayIso().split('-');
+    return `${Number(day)} ${SHORT[Number(month) - 1]}. ${year}`;
+  };
 
-  // ── Datos ──
+  // ── Datos ──────────────────────────────────────────────────────────────
   async function load() {
     if (data) return data;
     if (!loading) {
@@ -95,348 +109,824 @@
     }
     return loading;
   }
-  // Las filas llegan con indices: se convierten en objetos con el dia, la campana, el grupo y el anuncio.
+
+  // Las filas de anuncio llegan en columnas (pesan la mitad): aqui vuelven a ser objetos.
   function expand(json) {
-    const at = Object.fromEntries((json.columns || []).map((name, index) => [name, index]));
-    const rows = (json.rows || []).map(row => {
-      const campaign = json.campaigns[row[at.campaign]] || {};
-      const ad = json.ads[row[at.ad]] || {};
-      const item = { day: shift(json.firstDay, row[at.d]), campaign: campaign.name || '', group: campaign.group || 'Otros', ad: ad.name || '(sin nombre)', url: safeUrl(ad.url) };
-      FIELDS.forEach(field => { item[field] = Number(row[at[field]]) || 0; });
-      return item;
-    });
-    const seg = json.segments || {};
-    const sat = Object.fromEntries((seg.columns || []).map((name, index) => [name, index]));
-    const segments = (seg.rows || []).map(row => ({
-      day: shift(json.firstDay, row[sat.d]), group: seg.groups[row[sat.group]], age: seg.ages[row[sat.age]], sex: seg.sexes[row[sat.sex]],
-      spend: Number(row[sat.spend]) || 0, purchases: Number(row[sat.purchases]) || 0, revenue: Number(row[sat.revenue]) || 0,
-      conversations: Number(row[sat.conversations]) || 0, thruplays: Number(row[sat.thruplays]) || 0,
-    }));
-    return { rows, segments, lastDay: json.lastDay, syncedAt: json.syncedAt };
+    const at = Object.fromEntries((json.adColumns || []).map((name, index) => [name, index]));
+    const months = (json.months || []).map((month, index) => {
+      if (!month || !month.kpis) return null;
+      const ads = (month.ads || []).map(row => {
+        const ad = { name: String(row[at.name] || '(sin nombre)'), campaign: String(row[at.campaign] || ''), adSet: String(row[at.adSet] || ''), group: String(row[at.group] || 'Otros'), resultType: String(row[at.resultType] || ''), url: safeUrl(row[at.url]) };
+        METRICS.forEach(field => { ad[field] = Number(row[at[field]]) || 0; });
+        return ad;
+      });
+      if (!ads.some(ad => ad.spend > 0 || ad.impressions > 0)) return null;
+      return {
+        id: `${json.year}-${String(index + 1).padStart(2, '0')}`,
+        index,
+        name: month.name,
+        year: json.year,
+        firstDay: month.firstDay,
+        lastDay: month.lastDay,
+        closed: month.status === 'cerrado',
+        kpis: month.kpis,
+        campaigns: month.campaigns || [],
+        ads,
+      };
+    }).filter(Boolean);
+    return { months: months.reverse(), syncedAt: json.syncedAt, cutoff: json.cutoff };
   }
 
-  const activity = row => row.spend > 0 || row.impressions > 0;
-  const inWeek = (rows, monday) => rows.filter(row => row.day >= monday && row.day <= shift(monday, 6));
-  // Semanas de lunes a domingo ya cerradas y con entregas, de la mas reciente a la mas antigua.
-  function weeks(rows) {
-    const current = mondayOf(todayIso());
-    const mondays = new Set(rows.filter(activity).map(row => mondayOf(row.day)).filter(monday => monday < current));
-    // La primera semana del archivo puede venir incompleta: solo se lista si tiene su semana anterior para comparar.
-    const first = rows.length ? rows.reduce((min, row) => row.day < min ? row.day : min, rows[0].day) : '';
-    return [...mondays].filter(monday => monday >= first).sort().reverse().slice(0, WEEKS_IN_LIST);
-  }
+  // ── Objetivos y laminas ────────────────────────────────────────────────
+  // Los tres objetivos del barrido, como los lee el cliente en el resumen y en la distribucion.
+  const GROUPS = {
+    Mensajes: { key: 'Mensajes', label: 'Mensajes por WhatsApp', short: 'Mensajes WhatsApp', lower: 'mensajes por WhatsApp', campaign: 'Mensajes por WhatsApp', metric: 'conversations', unit: 'conv.', plural: 'conversaciones', color: BLUE, role: 'captación de contacto' },
+    Ventas: { key: 'Ventas', label: 'Ventas e-commerce', short: 'Ventas e-commerce', lower: 'ventas e-commerce', campaign: 'E-Commerce · Ventas', metric: 'purchases', unit: 'compras', plural: 'compras', color: TEAL, role: 'cierre de venta' },
+    Reconocimiento: { key: 'Reconocimiento', label: 'Reconocimiento', short: 'Reconocimiento', lower: 'reconocimiento', campaign: 'Reconocimiento', metric: 'reach', unit: 'alcance', plural: 'personas alcanzadas', color: AMBER, role: 'alcance de marca' },
+  };
+  const GROUP_ORDER = ['Mensajes', 'Ventas', 'Reconocimiento'];
+  const otherGroup = key => ({ key, label: key, short: key, lower: key.toLowerCase(), campaign: key, metric: 'results', unit: 'result.', plural: 'resultados', color: SLATE, role: 'otros objetivos' });
 
-  function sums(rows, group) {
-    const total = Object.fromEntries(FIELDS.map(field => [field, 0]));
-    rows.forEach(row => FIELDS.forEach(field => { total[field] += row[field]; }));
-    total.results = group ? total[group.field] : 0;
-    total.cost = group && total.results > 0 ? total.spend / total.results : null;
-    total.roas = total.spend > 0 && total.revenue > 0 ? total.revenue / total.spend : (total.spend > 0 && group?.key === 'Ventas' ? 0 : null);
-    total.cpc = ratio(total.spend, total.clicks);
+  // Un conjunto de anuncios con segmentacion local: el radio de 3 km alrededor de la tienda.
+  const isLocal = adSet => /tienda|local|barrio|\b3\s*km\b/i.test(String(adSet || ''));
+
+  // Las laminas de detalle, en el orden del modelo. "Mensajes" se parte en dos porque el publico amplio y
+  // el radio de 3 km no son comparables; si un mes no tuvo campaña local, esa lamina no se dibuja.
+  const SECTIONS = [
+    {
+      key: 'ventas', icon: 'cart', title: 'Ventas e-commerce', short: 'Ventas e-commerce',
+      toc: 'Compras, ROAS, embudo y públicos de la campaña de ventas.',
+      sub: 'Campaña de ventas en la web. Los valores de compra son atribución de Meta.',
+      metric: 'purchases', one: 'compra', many: 'compras', tag: 'Compra ahora', rest: 'Otras piezas de la campaña de ventas',
+      match: ad => ad.group === 'Ventas',
+    },
+    {
+      key: 'whatsapp', icon: 'chat', title: 'Mensajes WhatsApp · público general', short: 'Mensajes WhatsApp',
+      toc: 'Conversaciones de WhatsApp con público general.',
+      sub: 'Conversaciones por WhatsApp dirigidas a público amplio.',
+      metric: 'conversations', one: 'conversación', many: 'conversaciones', tag: 'WhatsApp', rest: 'Otras piezas de WhatsApp',
+      match: ad => ad.group === 'Mensajes' && !isLocal(ad.adSet),
+    },
+    {
+      key: 'tienda', icon: 'store', title: 'Mensajes a tienda · radio 3 km', short: 'Mensajes a tienda',
+      toc: 'Mensajes con segmentación local (radio 3 km).',
+      sub: 'Mensajes con segmentación local, dirigidos solo al público dentro de un radio de 3 km alrededor de la tienda física para atraer visitas y clientes del barrio.',
+      metric: 'conversations', one: 'conversación', many: 'conversaciones', tag: 'Mensaje local', rest: 'Otras piezas de mensajes a tienda',
+      match: ad => ad.group === 'Mensajes' && isLocal(ad.adSet),
+    },
+    {
+      key: 'reconocimiento', icon: 'eye', title: 'Reconocimiento de marca', short: 'Reconocimiento',
+      toc: 'Alcance, frecuencia y piezas que dieron a conocer la marca.',
+      sub: `Campaña de alcance para que más personas conozcan ${BRAND}.`,
+      metric: 'reach', one: 'persona alcanzada', many: 'personas alcanzadas', tag: 'Alcance', rest: 'Otras piezas de reconocimiento',
+      match: ad => ad.group === 'Reconocimiento',
+    },
+  ];
+
+  function sums(ads) {
+    const total = Object.fromEntries(METRICS.map(field => [field, 0]));
+    ads.forEach(ad => METRICS.forEach(field => { total[field] += ad[field]; }));
+    total.cpm = divide(total.spend * 1000, total.impressions);
+    total.cpc = divide(total.spend, total.clicks);
+    total.frequency = divide(total.impressions, total.reach);
+    total.roas = divide(total.revenue, total.spend);
     return total;
   }
-  function topAds(rows, group) {
-    const ads = new Map();
-    rows.forEach(row => {
-      const ad = ads.get(row.ad) || { name: row.ad, url: row.url, rows: [] };
-      if (!ad.url && row.url) ad.url = row.url;
-      ad.rows.push(row);
-      ads.set(row.ad, ad);
-    });
-    return [...ads.values()].map(ad => ({ ...ad, ...sums(ad.rows, group) }))
-      .filter(ad => ad.spend > 0)
-      .sort((a, b) => b.results - a.results || (group.key === 'Ventas' ? b.addToCart - a.addToCart : 0) || b.spend - a.spend)
-      .slice(0, TOP_ADS);
-  }
-  // El rango de edad y sexo con mas resultados (o mas inversion) en unas filas de segmentacion.
-  function topSegment(rows, field) {
-    const map = new Map();
-    rows.forEach(row => {
-      if (row.age === 'Unknown' || row.sex === 'unknown') return;
-      const key = `${row.sex}|${row.age}`;
-      const item = map.get(key) || { sex: row.sex, age: row.age, value: 0, spend: 0 };
-      item.value += row[field];
-      item.spend += row.spend;
-      map.set(key, item);
-    });
-    const best = [...map.values()].filter(item => item.value > 0).sort((a, b) => b.value - a.value || b.spend - a.spend)[0];
-    return best ? { label: `${SEX[best.sex] || best.sex} ${best.age}`, value: best.value } : null;
-  }
+  const resultOf = (stats, metric) => Number(stats[metric]) || 0;
 
-  function buildReport(monday) {
-    const prevMonday = shift(monday, -7);
-    const week = inWeek(data.rows, monday);
-    const prev = inWeek(data.rows, prevMonday);
-    const segWeek = inWeek(data.segments, monday);
-    const keys = [...ORDER, ...new Set(week.concat(prev).map(row => row.group).filter(key => !ORDER.includes(key)))];
-    const groups = keys.map(key => {
-      const group = GROUPS[key] || { ...OTHER, key, label: key, short: key };
-      const now = week.filter(row => row.group === key), before = prev.filter(row => row.group === key);
-      if (!now.some(activity) && !before.some(activity)) return null;
-      return { group, now: sums(now, group), before: sums(before, group), ads: topAds(now, group), active: now.some(activity) };
-    }).filter(Boolean);
-    const total = sums(week), totalBefore = sums(prev);
-    const segGroup = key => segWeek.filter(row => row.group === key);
+  function adStats(ad, metric) {
+    const result = resultOf(ad, metric);
     return {
-      monday, prevMonday, groups, total, totalBefore,
-      segments: {
-        messages: topSegment(segGroup('Mensajes'), 'conversations'),
-        buyers: topSegment(segWeek, 'purchases'),
-        spend: topSegment(segWeek, 'spend'),
-        thruplays: topSegment(segGroup('Reconocimiento'), 'thruplays'),
-      },
-      missing: Array.from({ length: 7 }, (_, i) => shift(monday, i)).filter(day => day > data.lastDay),
+      ...ad,
+      result,
+      cost: divide(ad.spend, result),
+      roas: divide(ad.revenue, ad.spend),
+      frequency: divide(ad.impressions, ad.reach),
+      // La descarga de Meta no trae el formato de la pieza. Solo se afirma "Video" cuando hay ThruPlays,
+      // que unicamente los mide un video; sin ellos no se inventa "Imagen", porque el dato no esta.
+      format: ad.thruplays > 0 ? 'Video' : '',
     };
   }
 
-  // ── Textos propuestos (lo que se puede afirmar con los numeros; el porque lo escribe el equipo) ──
-  function change(now, before) {
-    if (!before) return null;
-    return (now / before - 1) * 100;
+  function buildSection(spec, month) {
+    const ads = month.ads.filter(spec.match).filter(ad => ad.spend > 0 || ad.impressions > 0);
+    if (!ads.length) return null;
+    const cur = sums(ads);
+    if (!cur.spend) return null;
+    const ranked = ads.map(ad => adStats(ad, spec.metric))
+      .sort((left, right) => right.result - left.result || right.spend - left.spend);
+    const results = resultOf(cur, spec.metric);
+    return {
+      ...spec,
+      cur,
+      results,
+      cost: divide(cur.spend, results),
+      ads: ranked,
+      sets: adSets(ads, spec.metric),
+      share: divide(ranked[0] ? ranked[0].result : 0, results),
+    };
   }
-  function trend(now, before, group) {
-    const value = change(now, before);
-    if (value == null) return now ? `${count(now)} ${plural(now, group)} (sin ${group.many} la semana anterior)` : `sin ${group.many}`;
-    if (Math.abs(value) < 0.5) return `${count(now)} ${plural(now, group)}, igual que la semana anterior`;
-    return `${count(now)} ${plural(now, group)}, ${value > 0 ? 'sube' : 'baja'} ${Math.abs(Math.round(value))}% frente a la semana anterior (${count(before)})`;
-  }
-  function highlight(x) {
-    const { group, now, ads } = x;
-    const best = ads[0];
-    if (!x.active) return `Sin entrega esta semana.`;
-    if (!best || !best.results) return `${count(now.results)} ${plural(now.results, group)} con ${money(now.spend)} de inversión.`;
-    const share = now.results > 0 ? Math.round(best.results / now.results * 100) : 0;
-    const extra = group.key === 'Ventas' && best.roas ? ` (ROAS ${roasFmt(best.roas)})` : group.key !== 'Ventas' && best.cost != null ? ` a ${unitCost(best.cost)} por ${group.one}` : '';
-    return `"${best.name}" concentró ${count(best.results)} de ${count(now.results)} ${group.many} (${share}%)${extra}.`;
-  }
-  function analysis(x) {
-    const { group, now, before } = x;
-    if (!x.active) return 'El grupo no tuvo entrega esta semana.';
-    const parts = [`${group.label}: ${trend(now.results, before.results, group)}, con ${money(now.spend)} de inversión`];
-    if (now.cost != null) parts.push(`costo por ${group.one} ${unitCost(now.cost)}${before.cost != null ? ` (antes ${unitCost(before.cost)})` : ''}`);
-    if (group.key === 'Ventas') {
-      if (now.revenue > 0) parts.push(`ROAS ${roasFmt(now.roas)}`);
-      if (now.addToCart > now.purchases * 5 && now.addToCart > 0) parts.push(`${count(now.addToCart)} añadidos al carrito frente a ${count(now.purchases)} ${plural(now.purchases, group)}: hay interés de compra que todavía no se cierra`);
-    }
-    return `${parts.join(', ')}.`;
-  }
-  function suggested(r) {
-    const notes = { estrategia: '', distribucion: '', c1: '', c2: '', c3: '' };
-    const active = r.groups.filter(x => x.active);
-    const top = [...active].sort((a, b) => b.now.spend - a.now.spend)[0];
-    const segs = [r.segments.messages && `las conversaciones vienen sobre todo de ${r.segments.messages.label}`, r.segments.buyers && `las compras se concentran en ${r.segments.buyers.label}`].filter(Boolean);
-    notes.estrategia = `Semana ${rangeLabel(r.monday)}: ${money(r.total.spend)} de inversión en Meta Ads repartidos en ${active.map(x => x.group.short.toLowerCase()).join(', ') || 'ningún grupo'}.${segs.length ? ` En el publico, ${segs.join(' y ')}.` : ''}`;
-    notes.distribucion = top ? `${top.group.short} se llevó la mayor parte de la inversión (${pct(top.now.spend / r.total.spend * 100)}). ${active.map(x => `${x.group.short}: ${trend(x.now.results, x.before.results, x.group)}`).join('. ')}.` : '';
-    active.slice(0, 3).forEach((x, i) => {
-      const best = x.ads[0];
-      notes[`c${i + 1}`] = best && best.results
-        ? `${x.group.label}: "${best.name}" lideró con ${count(best.results)} ${plural(best.results, x.group)}${x.group.key === 'Ventas' && best.roas ? ` (ROAS ${roasFmt(best.roas)})` : ''}. ${x.now.results >= x.before.results ? 'Mantener esta línea creativa la próxima semana.' : `El grupo bajó frente a la semana anterior (${count(x.before.results)}): mantener la pieza que mejor rinde y probar variantes.`}`
-        : `${x.group.label}: sin ${x.group.many} con ${money(x.now.spend)} de inversión${x.group.key === 'Ventas' && x.now.addToCart ? ` y ${count(x.now.addToCart)} añadidos al carrito` : ''}. ${x.group.key === 'Ventas' ? 'Revisar ofertas, anuncios y el paso de pago.' : 'Revisar los anuncios del grupo.'}`;
-    });
-    active.forEach(x => { notes[`analisis-${x.group.key}`] = analysis(x); });
-    return notes;
-  }
-  const NOTE_TITLES = { c1: 'Conclusión 1', c2: 'Conclusión 2', c3: 'Conclusión 3' };
 
+  // Los conjuntos de anuncios de una lamina, de mayor a menor inversion: en Ventas son los publicos
+  // (remarketing y publico amplio) que el modelo compara por ROAS.
+  function adSets(ads, metric) {
+    const map = new Map();
+    ads.forEach(ad => {
+      const name = ad.adSet || 'Sin conjunto';
+      if (!map.has(name)) map.set(name, { name, ads: [] });
+      map.get(name).ads.push(ad);
+    });
+    return [...map.values()]
+      .map(set => {
+        const cur = sums(set.ads);
+        return { name: set.name, cur, result: resultOf(cur, metric), roas: cur.roas, cost: divide(cur.spend, resultOf(cur, metric)) };
+      })
+      .filter(set => set.cur.spend > 0)
+      .sort((left, right) => right.cur.spend - left.cur.spend);
+  }
+
+  // El nombre del publico como lo lee el cliente: "Conjunto de ventas - Ropa para niños - Remarketing"
+  // se dice "Remarketing · Ropa para niños".
+  function audienceLabel(name) {
+    const clean = String(name || '').replace(/^conjunto( de)?\s*/i, '').replace(/\s*-\s*/g, ' · ').replace(/\s+/g, ' ').trim();
+    if (!clean) return 'Sin conjunto';
+    // "Conjunto de ventas - Ropa para niños - Remarketing" se lee "Remarketing · Ropa para niños": lo que
+    // distingue al publico va primero y las palabras del objetivo, que ya dice el titulo, se caen.
+    const parts = clean.split(' · ').filter(part => !/^(ventas?|mensajes?|reconocimiento|alcance)$/i.test(part.trim()));
+    if (!parts.length) return clean;
+    const kind = parts.find(part => /remarketing|retargeting|amplio|abierto|lookalike|similar|interes/i.test(part));
+    if (kind && parts.length > 1) return [kind, ...parts.filter(part => part !== kind)].join(' · ');
+    return parts.join(' · ');
+  }
+
+  function buildReport(month) {
+    const totals = sums(month.ads);
+    const keys = [...GROUP_ORDER, ...new Set(month.ads.map(ad => ad.group).filter(key => !GROUP_ORDER.includes(key)))];
+    const objectives = keys.map(key => {
+      const group = GROUPS[key] || otherGroup(key);
+      const ads = month.ads.filter(ad => ad.group === key);
+      if (!ads.length) return null;
+      const cur = sums(ads);
+      if (!cur.spend) return null;
+      const results = resultOf(cur, group.metric);
+      return { group, cur, results, cost: group.key === 'Reconocimiento' ? cur.cpm : divide(cur.spend, results), share: divide(cur.spend, totals.spend) };
+    }).filter(Boolean).sort((left, right) => right.cur.spend - left.cur.spend);
+    const sections = SECTIONS.map(spec => buildSection(spec, month)).filter(Boolean);
+    // Con una sola campaña de mensajes no hace falta distinguirla del publico local.
+    const whatsapp = sections.find(section => section.key === 'whatsapp');
+    if (whatsapp && !sections.some(section => section.key === 'tienda')) {
+      whatsapp.title = 'Mensajes WhatsApp';
+      whatsapp.sub = 'Conversaciones por WhatsApp iniciadas desde los anuncios.';
+    }
+    const first = Number(month.firstDay.slice(8, 10));
+    const last = Number(month.lastDay.slice(8, 10));
+    const monthName = MONTHS[month.index];
+    const shortMonth = SHORT[month.index];
+    const range = `${first} – ${last} ${shortMonth} ${month.year}`;
+    return {
+      month, totals, objectives, sections,
+      labels: {
+        cover: `${cap(monthName)} ${month.year} · Periodo ${first} – ${last} ${shortMonth}`,
+        chip: range,
+        range,
+        monthName,
+        source: `Fuente: ${CHANNEL} · ${first} – ${last} ${shortMonth} ${month.year}`,
+        footer: `${BRAND} · Reporte ${CHANNEL} · ${cap(monthName)} ${month.year}`,
+        file: `${SLUG}-Reporte-${CHANNEL.replace(/\s+/g, '-')}-${cap(monthName)}-${month.year}`,
+        period: `${first} – ${last} de ${monthName} de ${month.year}${first === 1 && month.closed ? ' (mes completo)' : ''}`,
+      },
+    };
+  }
+
+  // ── Textos propuestos (lo que se puede afirmar con los numeros) ────────
+  const sectionByKey = (report, key) => report.sections.find(section => section.key === key);
+
+  function suggestIntro(report) {
+    const names = report.objectives.map(objective => ({
+      Mensajes: 'conversaciones por WhatsApp', Ventas: 'ventas en la web', Reconocimiento: 'reconocimiento de marca',
+    }[objective.group.key] || objective.group.label.toLowerCase()));
+    const count = { 1: 'un objetivo', 2: 'dos objetivos', 3: 'tres objetivos', 4: 'cuatro objetivos' }[names.length] || `${names.length} objetivos`;
+    return `${BRAND} trabajó ${count} en Meta: ${listOf(names)}. Cada canal cumple una función dentro del embudo.`;
+  }
+
+  function suggestResumenDestacado(report) {
+    const best = report.objectives[0];
+    if (!best) return '';
+    if (best.group.key === 'Mensajes') {
+      const tienda = sectionByKey(report, 'tienda');
+      const detail = tienda ? ' — WhatsApp general y mensajes a tienda (radio 3 km)' : '';
+      return `La campaña de **mensajes** generó ${num(best.results)} conversaciones a ${cost(best.cost)} cada una${detail}: es el canal que más contacto directo trae con el cliente.`;
+    }
+    if (best.group.key === 'Ventas') {
+      return `La campaña de **ventas** se llevó ${pct(best.share * 100)} de la inversión y cerró ${num(best.results)} compras por ${money(best.cur.revenue)} (ROAS ${ratio2(best.cur.roas)}).`;
+    }
+    return `**${best.group.label}** concentró ${pct(best.share * 100)} de la inversión del mes con ${money(best.cur.spend)}.`;
+  }
+
+  function suggestResumenAnalisis(report) {
+    const top = report.objectives[0];
+    const ventas = report.objectives.find(objective => objective.group.key === 'Ventas');
+    const reco = report.objectives.find(objective => objective.group.key === 'Reconocimiento');
+    const parts = [];
+    if (top) parts.push(`**Qué pasó:** el presupuesto se concentró en ${top.group.lower} (${pct(top.share * 100)}), el canal con mejor costo por resultado`);
+    if (ventas) parts.push(`las ventas web aportaron ${num(ventas.results)} ${ventas.results === 1 ? 'compra' : 'compras'} con ROAS ${ratio2(ventas.cur.roas)}`);
+    if (reco) parts.push(`el reconocimiento llevó la marca a ${thousands(reco.cur.reach)} personas a un CPM de ${money2(reco.cur.cpm)}`);
+    const action = top && top.group.key === 'Mensajes'
+      ? ' **Acción:** sostener WhatsApp como motor de contacto y reforzar remarketing para convertir conversaciones en más ventas.'
+      : ' **Acción:** sostener lo que mejor costo por resultado trae y reforzar remarketing para cerrar más ventas.';
+    return `${parts.join('; ')}.${action}`;
+  }
+
+  function suggestDistribucion(report) {
+    const top = report.objectives[0];
+    if (!top) return '';
+    const rest = report.objectives.slice(1).map(objective => objective.group.lower);
+    const half = top.share >= 0.5 ? 'Más de la mitad del presupuesto' : 'La mayor parte del presupuesto';
+    return `${half} (${pct(top.share * 100)}) fue a **${top.group.lower}**, el canal de ${top.group.role}.${rest.length ? ` ${cap(listOf(rest))} ${rest.length > 1 ? 'completan' : 'completa'} el embudo.` : ''}`;
+  }
+
+  function suggestAnalisis(section, report) {
+    const { cur, results, cost: unit } = section;
+    const best = section.ads[0];
+    if (section.key === 'ventas') {
+      const lines = [`**Qué pasó: ${num(results)} ${results === 1 ? 'compra' : 'compras'}** por ${money(cur.spend)}, ROAS ${ratio2(cur.roas)} y CPA ${cost(unit)}.`];
+      if (best && best.result > 0) lines.push(`**Qué lo trajo:** la pieza **"${best.name}"** convirtió a CPA ${cost(best.cost)} (ROAS ${ratio2(best.roas)}) con ${money(best.spend)} de inversión.`);
+      const sinCompras = section.ads.filter(ad => !ad.result).reduce((total, ad) => total + ad.spend, 0);
+      if (sinCompras > 0) lines.push(`**Por qué sube el CPA:** el resto del catálogo gastó ${money(sinCompras)} sin compras y subió el promedio.`);
+      if (cur.addToCart > 0) lines.push(`**Fuga del embudo:** la caída **carrito → pago** (${num(cur.addToCart)} → ${num(cur.checkouts)} → ${num(cur.purchases)}) es la mayor pérdida: recuperar carritos.`);
+      return lines.join(' ');
+    }
+    if (section.key === 'whatsapp' || section.key === 'tienda') {
+      const otra = report.sections.find(other => other.key === (section.key === 'whatsapp' ? 'tienda' : 'whatsapp'));
+      const lines = [`**Qué pasó: ${num(results)} ${results === 1 ? 'conversación' : 'conversaciones'}** por ${money(cur.spend)} a ${cost(unit)} c/u${section.key === 'tienda' ? ', con segmentación local: radio de 3 km alrededor de la tienda' : ''}.`];
+      if (section.key === 'tienda') {
+        lines.push(`**Por qué cuesta más:** el público local es pequeño, por eso la frecuencia sube (${ratio2(cur.frequency)})${otra ? ` y el costo por conversación es mayor que en WhatsApp general (${cost(otra.cost)})` : ''}. Es el precio de apuntar solo a la zona cercana.`);
+        lines.push('**Qué aporta:** acerca clientes del barrio a la **tienda física** y da a conocer el local.');
+      } else {
+        lines.push(`**Por qué el costo es bajo:** el público general es amplio y la llamada directa a WhatsApp convierte sin fricción.${best && best.result ? ` "${best.name}" trajo ${num(best.result)} de las ${num(results)} conversaciones a ${cost(best.cost)}.` : ''}`);
+        lines.push(`**Qué escalar:** ${best ? `la línea de **"${best.name}"**${best.format ? ` y su formato ${best.format.toLowerCase()}` : ''}` : 'las piezas con mejor costo por conversación'}. Dar seguimiento comercial a las conversaciones para cerrar ventas.`);
+      }
+      return lines.join(' ');
+    }
+    if (section.key === 'reconocimiento') {
+      const second = section.ads[1];
+      const lines = [`**Qué pasó: ${thousands(cur.reach)} personas** (${thousands(cur.impressions)} impresiones) a CPM ${money2(cur.cpm)} y frecuencia ${ratio2(cur.frequency)}.`];
+      lines.push(`**Por qué el CPM es tan bajo:** objetivo de alcance + público amplio + frecuencia controlada (${ratio2(cur.frequency)} veces por persona) = impresiones baratas sin saturar.`);
+      if (best && second && second.clicks > 0) lines.push(`**Qué pieza ganó: "${best.name}"** generó ${num(best.clicks)} clics frente a ${num(second.clicks)} de la siguiente. Este público alimenta el remarketing.`);
+      else if (best) lines.push(`**Qué pieza ganó: "${best.name}"**, con ${compact(best.reach)} de alcance y ${num(best.clicks)} clics.`);
+      return lines.join(' ');
+    }
+    return `**Qué pasó:** ${num(results)} ${section.many} por ${money(cur.spend)} a ${cost(unit)} cada ${section.one}.`;
+  }
+
+  function suggestDestacado(section, report) {
+    const best = section.ads[0];
+    if (section.key === 'ventas') {
+      return best && best.result
+        ? `La pieza **"${best.name}"** concentró ${num(best.result)} de las ${num(section.results)} compras del mes con ROAS ${ratio2(best.roas)}.`
+        : `La campaña de ventas invirtió ${money(section.cur.spend)} sin cerrar compras: revisar oferta, piezas y paso de pago.`;
+    }
+    if (section.key === 'whatsapp') {
+      return best && section.share
+        ? `Una sola pieza trajo el **${pct(section.share * 100)} de las conversaciones** de WhatsApp a ${cost(best.cost)}: la línea creativa a escalar.`
+        : `${num(section.results)} conversaciones de WhatsApp a ${cost(section.cost)} cada una.`;
+    }
+    if (section.key === 'tienda') {
+      const otra = sectionByKey(report, 'whatsapp');
+      return `El público local cuesta más por conversación (${cost(section.cost)}${otra ? ` frente a ${cost(otra.cost)} en WhatsApp general` : ''}), pero acerca clientes del barrio a la tienda.`;
+    }
+    if (section.key === 'reconocimiento') {
+      return `El CPM de **${money2(section.cur.cpm)}** es el costo más eficiente del mes${best ? `; "${best.name}" fue la pieza que más público alcanzó` : ''}.`;
+    }
+    return `${num(section.results)} ${section.many} por ${money(section.cur.spend)}.`;
+  }
+
+  // Una conclusion por objetivo (no por lamina): las dos campañas de mensajes dejan una sola lectura,
+  // como en el modelo.
+  const CONCLUSION_ICONS = { Mensajes: 'chat', Ventas: 'cart', Reconocimiento: 'eye' };
+  function suggestConclusion(objective, report) {
+    const { group, cur, results } = objective;
+    if (group.key === 'Mensajes') {
+      const tienda = sectionByKey(report, 'tienda');
+      const whatsapp = sectionByKey(report, 'whatsapp');
+      const detail = tienda && whatsapp ? `, en WhatsApp general (${num(whatsapp.results)}) y mensajes a tienda (${num(tienda.results)}, radio 3 km)` : '';
+      const best = (whatsapp || tienda || { ads: [] }).ads[0];
+      return {
+        title: 'WhatsApp es el motor de contacto',
+        text: `${num(results)} conversaciones a ${cost(objective.cost)}${detail}.${best ? ` "${best.name}" es la línea creativa a escalar.` : ''}`,
+      };
+    }
+    if (group.key === 'Ventas') {
+      const ventas = sectionByKey(report, 'ventas');
+      const best = ventas && ventas.ads[0];
+      const remarketing = ventas && ventas.sets.find(set => /remarketing|retarget/i.test(set.name));
+      return {
+        title: remarketing ? 'El remarketing cierra las ventas' : 'Las ventas vienen de la oferta',
+        text: `${num(results)} compras con ROAS ${ratio2(cur.roas)}${remarketing ? `; el remarketing rindió ${ratio2(remarketing.roas)} con ${num(remarketing.result)} de ellas` : ''}.${best ? ` Las piezas "${best.name}" concentraron las ventas del mes.` : ''}`,
+      };
+    }
+    if (group.key === 'Reconocimiento') {
+      return {
+        title: 'Marca con alcance eficiente',
+        text: `${thousands(cur.reach)} personas a CPM ${money2(cur.cpm)}. Ese público nuevo alimenta las campañas de ventas y conversaciones del siguiente periodo.`,
+      };
+    }
+    return { title: group.label, text: `${num(results)} ${group.plural} por ${money(cur.spend)}.` };
+  }
+
+  function suggestSteps(report) {
+    const ventas = sectionByKey(report, 'ventas');
+    const whatsapp = sectionByKey(report, 'whatsapp') || sectionByKey(report, 'tienda');
+    const steps = [];
+    const creativa = whatsapp && whatsapp.ads[0] ? `"${whatsapp.ads[0].name}"` : '';
+    const oferta = ventas && ventas.ads[0] ? `"${ventas.ads[0].name}"` : '';
+    steps.push({
+      icon: 'star',
+      title: `Escalar ${creativa ? `la línea de ${creativa}` : 'las piezas con mejor costo'}${oferta ? ` y las piezas ${oferta}` : ''}`,
+      text: `Crear nuevas variaciones de ${creativa || 'la pieza que mejor rinde'} y mantener las piezas de oferta que generaron las compras del mes.`,
+    });
+    steps.push({
+      icon: 'users',
+      title: 'Reforzar remarketing hacia carrito y conversaciones',
+      text: `Reactivar a ${ventas && ventas.cur.addToCart ? `los ${num(ventas.cur.addToCart)} usuarios que agregaron al carrito y a ` : ''}las conversaciones iniciadas para cerrar más ventas.`,
+    });
+    return steps;
+  }
+
+  // ── Notas del equipo ───────────────────────────────────────────────────
   function readNotes() {
     try {
       const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
       return saved && typeof saved === 'object' ? saved : {};
     } catch { return {}; }
   }
-  function saveNote(monday, key, value) {
-    const notes = readNotes();
-    notes[monday] = { ...(notes[monday] || {}), [key]: value };
+  function writeNotes(notes) {
     try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch { /* sin storage dura hasta recargar */ }
   }
-  function resetNotes(monday) {
+  function saveNote(periodId, key, value) {
     const notes = readNotes();
-    delete notes[monday];
-    try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch { /* sin storage */ }
+    notes[periodId] = { ...(notes[periodId] || {}), [key]: value };
+    writeNotes(notes);
   }
-  // Texto editable en pantalla; al imprimir se muestra la copia en texto (un textarea no crece en el PDF).
-  function editable(key, value, rows = 3) {
-    return `<div class="week-edit"><textarea data-week-note="${esc(key)}" rows="${rows}" aria-label="Texto editable del reporte">${esc(value)}</textarea><div class="week-print-text" data-print-for="${esc(key)}">${esc(value)}</div></div>`;
+  function resetNotes(periodId) {
+    const notes = readNotes();
+    delete notes[periodId];
+    writeNotes(notes);
+  }
+  // Texto editable sobre la lamina: al hacer clic se ve con sus ** y al salir vuelve a negrita.
+  function editable(key, text, tag = 'p', className = '') {
+    return `<${tag} class="rp-edit ${className}" data-note="${esc(key)}" data-raw="${esc(text)}" title="Clic para editar · **texto** va en negrita">${rich(text)}</${tag}>`;
+  }
+  const pick = (notes, key, fallback) => (notes[key] != null ? notes[key] : fallback);
+
+  // ── Piezas de las laminas ──────────────────────────────────────────────
+  // Una tarjeta de KPI: rotulo, cifra y pie. Con texto en vez de cifra (el nombre de una campaña) la
+  // tipografia baja para que entre en una linea.
+  const kpi = (label, value, foot, text = false) => `
+    <div class="rp-card rp-kpi${text ? ' rp-kpi-text' : ''}">
+      <span class="rp-kpi-label">${esc(label)}</span>
+      <strong>${value}</strong>
+      <span class="rp-delta muted">${esc(foot)}</span>
+    </div>`;
+
+  const head = (title, sub, chip) => `
+    <header class="rp-head">
+      <div><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>
+      ${chip ? `<span class="rp-chip">${icon('calendar')}${esc(chip)}</span>` : ''}
+    </header>`;
+
+  const footer = (left, report, page, total) => `
+    <footer class="rp-foot">
+      <span>${esc(left)}</span>
+      <span class="rp-foot-right"><img src="${LOGO}" alt=""><b>Lima Retail</b>${esc(report.labels.footer)} · ${pageNumber(page)} / ${pageNumber(total)}</span>
+    </footer>`;
+
+  const insight = (label, key, text) => `
+    <div class="rp-insight">
+      <span class="rp-insight-icon">${icon('bulb')}</span>
+      <div>
+        <span class="rp-insight-label">${esc(label)}</span>
+        ${editable(key, text)}
+      </div>
+    </div>`;
+
+  const panel = (iconName, title, sub, body, className = '') => `
+    <div class="rp-panel ${className}">
+      <div class="rp-panel-head">
+        <span class="rp-icon">${icon(iconName)}</span>
+        <div><div class="rp-panel-title">${esc(title)}</div>${sub ? `<div class="rp-panel-sub">${esc(sub)}</div>` : ''}</div>
+      </div>
+      <div class="rp-panel-body">${body}</div>
+    </div>`;
+
+  // Barras de desglose: etiqueta, barra proporcional con su cifra dentro y el detalle a la derecha.
+  function bars(rows) {
+    const top = Math.max(...rows.map(row => row.value), 1);
+    return `<div class="rp-bars">${rows.map((row, index) => `
+      <div class="rp-bar-row">
+        <span class="rp-bar-label" title="${esc(row.label)}">${esc(row.label)}</span>
+        <span class="rp-bar-track"><span class="rp-bar-fill${index && !row.color ? ' soft' : ''}" style="width:${Math.max(6, Math.round((row.value / top) * 100))}%${row.color ? `;background:${row.color}` : ''}">${esc(row.inside || '')}</span></span>
+        <span class="rp-bar-value">${esc(row.right || '')}</span>
+      </div>`).join('')}</div>`;
   }
 
-  // ── Pintado ──
-  function metricValue(stats, key) {
-    if (key === 'spend' || key === 'revenue') return money(stats[key]);
-    if (key === 'cost') return unitCost(stats.cost);
-    if (key === 'roas') return roasFmt(stats.roas);
-    return count(stats[key]);
-  }
-  // "+12% vs S/ 300" frente a la semana anterior. En la inversion no hay mejor ni peor: va en gris.
-  function deltaPill(now, before, key) {
-    const a = now[key], b = before[key];
-    if (isNum(b) && b === 0) return `<small class="week-delta flat">${a ? 'sem. anterior: 0' : 'igual que la sem. anterior'}</small>`;
-    if (!isNum(a) || !isNum(b)) return '<small class="week-delta flat">sin semana anterior</small>';
-    const value = (a / b - 1) * 100;
-    const better = key === 'cost' ? value <= 0 : key === 'spend' ? null : value >= 0;
-    const tone = Math.abs(value) < 0.5 || better == null ? 'flat' : better ? 'up' : 'down';
-    return `<small class="week-delta ${tone}">${value >= 0 ? '+' : '-'}${Math.abs(Math.round(value))}% vs ${metricValue(before, key)}</small>`;
-  }
-  function kpiRow(x, list) {
-    return `<div class="week-kpis">${list.map(([key, label]) => `<div class="week-kpi"><strong>${metricValue(x.now, key)}</strong><span>${esc(label)}</span>${deltaPill(x.now, x.before, key)}</div>`).join('')}</div>`;
-  }
-  const slideHead = (title, sub, color) => `<div class="week-slide-head"${color ? ` style="--gc:${color}"` : ''}><div class="week-slide-title"><span>${esc(BRAND)}</span> | ${esc(title)}</div>${sub ? `<div class="week-slide-sub">${esc(sub)}</div>` : ''}</div>`;
-  const slideFoot = r => `<div class="week-slide-foot"><span>LIMA RETAIL | DATA DRIVEN MARKETING | POWER KPI | DIGITAL ANALYTICS</span><span>Reporte Ads - ${esc(BRAND)}: ${esc(rangeLabel(r.monday))}</span></div>`;
-  function adsTable(x) {
-    const { group, ads } = x;
-    if (!ads.length) return '<div class="week-empty">Sin anuncios con inversión esta semana.</div>';
-    return `<table class="data-table week-table"><thead><tr><th>Anuncio</th>${group.adCols.map(([, label]) => `<th class="num">${esc(label)}</th>`).join('')}<th>Vista</th></tr></thead><tbody>${ads.map(ad => `
-      <tr><td class="week-ad-name">${esc(ad.name)}</td>${group.adCols.map(([key]) => `<td class="num">${key === 'spend' ? money(ad.spend) : count(ad[key])}</td>`).join('')}<td>${ad.url ? `<a href="${esc(ad.url)}" target="_blank" rel="noopener">Ver &raquo;</a>` : '—'}</td></tr>`).join('')}</tbody></table>`;
-  }
-  function sideTable(x, r) {
-    const { group, now } = x;
-    if (group.key === 'Ventas') {
-      const stages = [['Clics al enlace', now.clicks], ['Visitas a la web', now.landingViews], ['Añadidos al carrito', now.addToCart], ['Pagos iniciados', now.checkouts], ['Compras', now.purchases]];
-      return `<div class="week-sub-title">Embudo E-Commerce</div><table class="data-table week-table"><thead><tr><th>Etapa</th><th class="num">Cantidad</th></tr></thead><tbody>${stages.map(([label, value]) => `<tr><td>${label}</td><td class="num">${count(value)}</td></tr>`).join('')}</tbody></table>`;
-    }
-    if (group.key === 'Mensajes') {
-      const rows = [['Más mensajes', r.segments.messages], ['Compradoras', r.segments.buyers], ['Mayor inversión', r.segments.spend]].filter(([, seg]) => seg);
-      return `<div class="week-sub-title">Segmentación</div><table class="data-table week-table"><thead><tr><th>Dato</th><th>Detalle</th></tr></thead><tbody>${rows.length ? rows.map(([label, seg]) => `<tr><td>${label}</td><td>${esc(seg.label)}</td></tr>`).join('') : '<tr><td colspan="2" class="table-empty">Sin datos de edad y sexo</td></tr>'}</tbody></table>`;
-    }
-    if (group.key === 'Reconocimiento') {
-      const rows = [['Impresiones', count(now.impressions)], ['Alcance (suma diaria)', count(now.reach)], ['Más reproducciones', r.segments.thruplays ? esc(r.segments.thruplays.label) : '—'], ['Costo por clic', unitCost(now.cpc)]];
-      return `<div class="week-sub-title">Alcance de marca</div><table class="data-table week-table"><thead><tr><th>Dato</th><th class="num">Detalle</th></tr></thead><tbody>${rows.map(([label, value]) => `<tr><td>${label}</td><td class="num">${value}</td></tr>`).join('')}</tbody></table>`;
-    }
-    return '';
-  }
-  function groupSlide(x, r, notes) {
-    const { group } = x;
+  // La dona de la distribucion: un arco por objetivo, en el orden de la tabla.
+  function donut(report) {
+    const radius = 86;
+    const circumference = 2 * Math.PI * radius;
+    let offset = 0;
+    const arcs = report.objectives.map(objective => {
+      const share = objective.share || 0;
+      const length = circumference * share;
+      const arc = `<circle cx="116" cy="116" r="${radius}" fill="none" stroke="${objective.group.color}" stroke-width="34" stroke-dasharray="${length.toFixed(2)} ${(circumference - length).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"></circle>`;
+      offset += length;
+      return arc;
+    }).join('');
     return `
-      <section class="week-slide" style="--gc:${group.color}">
-        ${slideHead(group.label, highlightTitle(x))}
-        ${group.kpis.length ? kpiRow(x, group.kpis) : ''}
-        <div class="week-cols">
-          <div><div class="week-sub-title">${esc(group.topTitle)}</div>${adsTable(x)}</div>
-          <div>${sideTable(x, r)}</div>
+      <div class="rp-donut">
+        <svg viewBox="0 0 232 232" role="img" aria-label="Distribución de la inversión por objetivo">${arcs}</svg>
+        <span class="rp-donut-center"><strong>${money(report.totals.spend)}</strong><span>inversión</span></span>
+      </div>`;
+  }
+
+  // Tarjetas de los mejores anuncios: la pieza, su formato y tres o cuatro cifras, como en el modelo.
+  function bestAds(section) {
+    const ads = section.ads.filter(ad => ad.spend > 0);
+    if (!ads.length) return '';
+    const dominant = section.share != null && section.share >= DOMINANT && ads.length > 2;
+    const shown = ads.slice(0, dominant ? 1 : TOP_ADS);
+    const rest = ads.slice(shown.length);
+    const title = { ventas: 'Mejores anuncios · por compras y ROAS', whatsapp: 'Mejor anuncio · por conversaciones', tienda: 'Mejores anuncios · por conversaciones', reconocimiento: 'Mejores anuncios · por alcance' }[section.key] || 'Mejores anuncios';
+    const figures = ad => {
+      if (section.key === 'ventas') return [['Inversión', money(ad.spend)], ['Compras', num(ad.result), true], ['ROAS', ratio2(ad.roas), true], ['CPA', cost(ad.cost)]];
+      if (section.key === 'reconocimiento') return [['Inversión', money(ad.spend)], ['Alcance', compact(ad.reach), true], ['Clics', num(ad.clicks)], ['Frecuencia', ratio2(ad.frequency)]];
+      return [['Inversión', money(ad.spend)], ['Conversac.', num(ad.result), true], ['Costo/conv.', cost(ad.cost)], ['Alcance', compact(ad.reach)]];
+    };
+    const card = (ad, index) => `
+      <article class="rp-best-card${index === 0 ? ' best' : ''}">
+        <div class="rp-best-body">
+          <div class="rp-best-top">
+            <span class="rp-best-name" title="${esc(ad.name)}">${esc(ad.name)}</span>
+            <span class="rp-best-tag">${esc(ad.format ? `${ad.format} · ${section.tag}` : section.tag)}</span>
+          </div>
+          <dl class="rp-best-figs">${figures(ad).map(([label, value, mark]) => `<div><dt>${esc(label)}</dt><dd${mark ? ' class="mark"' : ''}>${value}</dd></div>`).join('')}</dl>
         </div>
-        <div class="week-callout"><b>Destacado:</b> ${esc(highlight(x))}</div>
-        <div class="week-analysis"><div class="week-sub-title">Análisis</div>${editable(`analisis-${group.key}`, notes[`analisis-${group.key}`] ?? '')}</div>
-        ${slideFoot(r)}
+      </article>`;
+    const note = rest.length ? `
+      <div class="rp-best-note">
+        <b>${esc(section.rest || 'Otras piezas')}</b>
+        <span>${esc(rest.slice(0, 3).map(ad => ad.name).join(', '))}${rest.length > 3 ? ` y ${rest.length - 3} más` : ''} · ${num(rest.reduce((total, ad) => total + ad.result, 0))} ${esc(section.many)} con ${money(rest.reduce((total, ad) => total + ad.spend, 0))} de inversión.</span>
+      </div>` : '';
+    return `
+      <div class="rp-best">
+        <div class="rp-best-head">${icon('star')}${esc(title)}</div>
+        <div class="rp-best-grid">${shown.map(card).join('')}${dominant ? note : ''}</div>
+      </div>`;
+  }
+
+  // El panel derecho de cada lamina: el embudo y los publicos en ventas, el desglose por pieza en
+  // mensajes, el contexto local en la campaña de tienda y el alcance por pieza en reconocimiento.
+  function sidePanel(section) {
+    if (section.key === 'ventas') {
+      const { cur } = section;
+      const funnel = bars([
+        { label: 'Agregados al carrito', value: cur.addToCart, inside: num(cur.addToCart), color: BLUE },
+        { label: 'Pagos iniciados', value: cur.checkouts, inside: num(cur.checkouts), color: '#0ea5e9' },
+        { label: 'Compras', value: cur.purchases, inside: num(cur.purchases), color: TEAL },
+      ]);
+      const audiences = section.sets.slice(0, 2).map((set, index) => `
+        <div class="rp-aud-card${index === 0 ? ' best' : ''}">
+          <div class="rp-aud-head">
+            <span class="rp-aud-name">${esc(audienceLabel(set.name))}</span>
+            <span class="rp-aud-roas">${set.cur.revenue > 0 ? `ROAS ${ratio2(set.roas)}` : 'Sin compras'}</span>
+          </div>
+          <dl class="rp-aud-figs">
+            <div><dt>Inversión</dt><dd>${money(set.cur.spend)}</dd></div>
+            <div><dt>Compras</dt><dd>${num(set.cur.purchases)}</dd></div>
+            <div><dt>Valor</dt><dd>${money(set.cur.revenue)}</dd></div>
+          </dl>
+        </div>`).join('');
+      const sets = section.sets.slice(0, 2);
+      return panel('cart', 'Embudo y públicos de venta', 'Atribución Meta', `${funnel}${audiences ? `<div class="rp-aud${sets.length < 2 ? ' one' : ''}">${audiences}</div>` : ''}`);
+    }
+    if (section.key === 'tienda') {
+      const { cur } = section;
+      const rows = [
+        { label: 'Alcance local', value: 1, inside: '', right: `${compact(cur.reach)} personas`, color: TEAL },
+        { label: 'Frecuencia', value: 0.62, inside: '', right: `${ratio2(cur.frequency)} veces`, color: '#0ea5e9' },
+        { label: 'Clics al enlace', value: 0.45, inside: '', right: `${num(cur.clicks)} clics`, color: BLUE },
+      ];
+      return panel('pin', 'Contexto del público local', 'Radio de 3 km alrededor de la tienda', bars(rows));
+    }
+    if (section.key === 'reconocimiento') {
+      const rows = section.ads.slice(0, 3).map((ad, index) => ({
+        label: ad.name, value: ad.reach, inside: '', right: `${compact(ad.reach)} · ${num(ad.clicks)} clics`, color: index === 0 ? AMBER : '',
+      }));
+      return panel('eye', 'Alcance por pieza', 'Personas alcanzadas y clics', bars(rows));
+    }
+    // En mensajes, como el modelo: la pieza que manda y el resto junto, para que se vea el reparto real.
+    const shown = section.ads.length > 3 ? section.ads.slice(0, 2) : section.ads.slice(0, 3);
+    const others = section.ads.slice(shown.length);
+    const rows = shown.map((ad, index) => ({
+      label: ad.name, value: ad.result, inside: '', right: `${num(ad.result)} · ${cost(ad.cost)}`, color: index === 0 ? BLUE : '',
+    }));
+    if (others.length) {
+      const result = others.reduce((total, ad) => total + ad.result, 0);
+      rows.push({ label: `Otras ${others.length} piezas`, value: result, inside: '', right: `${num(result)} conv.` });
+    }
+    return panel('chat', 'Desglose de conversaciones', 'Qué pieza las generó', bars(rows));
+  }
+
+  // ── Laminas ────────────────────────────────────────────────────────────
+  function coverPage(report) {
+    return `
+      <section class="rp-page rp-cover">
+        <div class="rp-brand"><img src="${LOGO}" alt="Lima Retail"><div><b>Lima Retail</b><span>Data Driven Marketing</span></div></div>
+        <div class="rp-cover-body">
+          <span class="rp-cover-mark" aria-hidden="true">${esc(BRAND.split(/\s+/).pop().charAt(0).toUpperCase())}</span>
+          <h1>Reporte de Publicidad</h1>
+          <p class="rp-cover-client">Cliente: <b>${esc(BRAND)}</b></p>
+          <p class="rp-cover-period">${esc(report.labels.cover)}&nbsp; | &nbsp;${esc(CHANNEL)}</p>
+        </div>
+        <footer class="rp-foot">
+          <span>${AGENCY_LINE}</span>
+          <span class="rp-foot-right"><img src="${LOGO}" alt=""><b>Lima Retail</b>Emitido el ${esc(issuedLabel())}</span>
+        </footer>
       </section>`;
   }
-  function highlightTitle(x) {
-    if (!x.active) return 'Sin entrega esta semana';
-    const best = x.ads[0];
-    return best && best.results ? `"${best.name}" es el anuncio que más ${x.group.many} trajo` : `${count(x.now.results)} ${plural(x.now.results, x.group)} en la semana`;
+
+  function contentsPage(report, pages, total) {
+    const items = [
+      { title: 'Resumen ejecutivo', desc: 'Inversión, resultados por objetivo y aporte de cada canal.', icon: 'briefcase', page: pages.summary },
+      { title: 'Distribución de inversión', desc: 'Cómo se repartió el presupuesto entre los objetivos.', icon: 'layers', page: pages.distribution },
+      ...report.sections.map((section, index) => ({ title: section.short, desc: section.toc, icon: section.icon, page: pages.firstSection + index })),
+      { title: 'Conclusiones', desc: 'Qué funcionó y próximos pasos.', icon: 'flag', page: pages.conclusions },
+    ];
+    return `
+      <section class="rp-page">
+        ${head('Contenido del reporte', 'Qué encontrarás en cada sección de este informe.')}
+        <div class="rp-body rp-contents">
+          ${items.map((item, index) => `
+            <div class="rp-card rp-toc">
+              <div class="rp-toc-top"><span class="rp-icon">${icon(item.icon)}</span><span class="rp-toc-num">${pageNumber(index + 1)}</span></div>
+              <h3>${esc(item.title)}</h3>
+              <p>${esc(item.desc)}</p>
+              <span class="rp-toc-page">Página ${pageNumber(item.page)}</span>
+            </div>`).join('')}
+        </div>
+        ${footer(report.labels.source, report, 2, total)}
+      </section>`;
+  }
+
+  function summaryPage(report, notes, page, total) {
+    const { totals, objectives, labels } = report;
+    const mensajes = objectives.find(objective => objective.group.key === 'Mensajes');
+    const ventas = objectives.find(objective => objective.group.key === 'Ventas');
+    const reco = objectives.find(objective => objective.group.key === 'Reconocimiento');
+    const tiles = [kpi('Inversión', money(totals.spend), `${CHANNEL} · ${report.month.closed ? 'mes completo' : 'mes en curso'}`)];
+    if (mensajes) tiles.push(kpi('Conversaciones', num(mensajes.results), `WhatsApp · ${cost(mensajes.cost)} c/u`));
+    if (ventas) {
+      tiles.push(kpi('Compras web', num(ventas.results), `Atribución Meta · ROAS ${ratio2(ventas.cur.roas)}`));
+      tiles.push(kpi('Valor compras', money(ventas.cur.revenue), 'Atribución Meta'));
+    }
+    if (reco) tiles.push(kpi('Alcance recon.', thousands(reco.cur.reach), `suma diaria · CPM ${money2(reco.cur.cpm)}`));
+    tiles.push(kpi('Clics al enlace', num(totals.clicks), 'Hacia WhatsApp y web'));
+
+    const resultLabel = objective => {
+      if (objective.group.key === 'Reconocimiento') return `<b>${compact(objective.cur.reach)}</b> alcance`;
+      return `<b>${num(objective.results)}</b> ${esc(objective.group.unit)}`;
+    };
+    const costLabel = objective => (objective.group.key === 'Reconocimiento' ? `${money2(objective.cur.cpm)} CPM` : cost(objective.cost));
+    return `
+      <section class="rp-page">
+        ${head('Resumen ejecutivo', pick(notes, 'intro', suggestIntro(report)), labels.chip)}
+        <div class="rp-body">
+          <div class="rp-grid-kpis">${tiles.join('')}</div>
+          <div class="rp-split">
+            <div class="rp-card rp-table-card">
+              <div class="rp-card-title">Resultado por objetivo</div>
+              <div class="rp-card-sub">Inversión y resultado principal de cada campaña</div>
+              <table class="rp-table">
+                <colgroup><col style="width:40%"><col style="width:19%"><col style="width:23%"><col style="width:18%"></colgroup>
+                <thead><tr><th>Objetivo</th><th class="num">Inversión</th><th class="num">Resultado</th><th class="num">Costo</th></tr></thead>
+                <tbody>
+                  ${objectives.map((objective, index) => `
+                    <tr${index === 0 ? ' class="rp-top"' : ''}>
+                      <td class="rp-name"><i class="rp-dot" style="background:${objective.group.color}"></i>${esc(objective.group.label)}</td>
+                      <td class="num">${money(objective.cur.spend)}</td>
+                      <td class="num">${resultLabel(objective)}</td>
+                      <td class="num">${costLabel(objective)}</td>
+                    </tr>`).join('')}
+                  <tr class="rp-total"><td>Total · ${objectives.length} ${objectives.length === 1 ? 'objetivo' : 'objetivos'}</td><td class="num">${money(totals.spend)}</td><td class="num">—</td><td class="num">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="rp-pile">
+              ${insight('Destacado', 'destacado', pick(notes, 'destacado', suggestResumenDestacado(report)))}
+              ${panel('chart', 'Análisis', '', editable('analisis', pick(notes, 'analisis', suggestResumenAnalisis(report))))}
+            </div>
+          </div>
+        </div>
+        ${footer(`${labels.source} · valores de compra = atribución de Meta`, report, page, total)}
+      </section>`;
+  }
+
+  function distributionPage(report, notes, page, total) {
+    const { totals, objectives, labels } = report;
+    const top = objectives[0];
+    const tiles = [kpi('Inversión total', money(totals.spend), `${objectives.length} ${objectives.length === 1 ? 'campaña activa' : 'campañas activas'}`)];
+    if (top) tiles.push(kpi('Mayor inversión', esc(top.group.short), `${pct(top.share * 100)} · ${top.group.role}`, true));
+    objectives.slice(1, 3).forEach(objective => tiles.push(kpi(objective.group.key, pct(objective.share * 100), objective.group.key === 'Reconocimiento' ? objective.group.role : 'del presupuesto')));
+    const resultLabel = objective => {
+      if (objective.group.key === 'Ventas') return `${num(objective.results)} compras · ${money(objective.cur.revenue)}`;
+      if (objective.group.key === 'Reconocimiento') return `${compact(objective.cur.reach)} alcance`;
+      return `${num(objective.results)} ${objective.group.plural}`;
+    };
+    return `
+      <section class="rp-page">
+        ${head('Distribución de inversión', 'El presupuesto se repartió entre los objetivos según su función en el embudo: captar contacto, vender y dar a conocer la marca.', labels.chip)}
+        <div class="rp-body">
+          <div class="rp-grid-kpis">${tiles.join('')}</div>
+          <div class="rp-card">
+            <div class="rp-panel-head">
+              <span class="rp-icon">${icon('layers')}</span>
+              <div><div class="rp-panel-title">Inversión por campaña</div><div class="rp-panel-sub">Cada objetivo con su participación y resultado principal</div></div>
+            </div>
+            <div class="rp-dist">
+              ${donut(report)}
+              <table class="rp-table">
+                <colgroup><col style="width:34%"><col style="width:18%"><col style="width:14%"><col style="width:34%"></colgroup>
+                <thead><tr><th>Campaña</th><th class="num">Inversión</th><th class="num">% inv.</th><th class="num">Resultado</th></tr></thead>
+                <tbody>
+                  ${objectives.map((objective, index) => `
+                    <tr${index === 0 ? ' class="rp-top"' : ''}>
+                      <td class="rp-name"><i class="rp-dot" style="background:${objective.group.color}"></i>${esc(objective.group.campaign)}</td>
+                      <td class="num">${money(objective.cur.spend)}</td>
+                      <td class="num">${pct(objective.share * 100)}</td>
+                      <td class="num">${esc(resultLabel(objective))}</td>
+                    </tr>`).join('')}
+                  <tr class="rp-total"><td>Total · ${objectives.length} ${objectives.length === 1 ? 'campaña' : 'campañas'}</td><td class="num">${money(totals.spend)}</td><td class="num">100%</td><td class="num">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          ${insight('Destacado', 'distribucion', pick(notes, 'distribucion', suggestDistribucion(report)))}
+        </div>
+        ${footer(report.labels.source, report, page, total)}
+      </section>`;
+  }
+
+  function sectionTiles(section) {
+    const { cur, results } = section;
+    if (section.key === 'ventas') {
+      return [
+        kpi('Inversión', money(cur.spend), 'Campaña de ventas'),
+        kpi('Compras', num(results), 'Atribución Meta'),
+        kpi('Costo por compra', cost(section.cost), 'Inversión ÷ compras'),
+        kpi('Valor de compras', money(cur.revenue), 'Atribución Meta'),
+        kpi('ROAS Meta', ratio2(cur.roas), 'Valor ÷ inversión'),
+      ].join('');
+    }
+    if (section.key === 'reconocimiento') {
+      return [
+        kpi('Inversión', money(cur.spend), 'Campaña de alcance'),
+        kpi('Alcance', thousands(cur.reach), 'Suma diaria de alcance'),
+        kpi('Impresiones', thousands(cur.impressions), 'Veces mostrado'),
+        kpi('Frecuencia', ratio2(cur.frequency), 'Impresiones ÷ alcance'),
+        kpi('CPM', money2(cur.cpm), 'Costo por mil impres.'),
+      ].join('');
+    }
+    const local = section.key === 'tienda';
+    return [
+      kpi('Inversión', money(cur.spend), local ? 'Mensajes a tienda' : 'Mensajes WhatsApp'),
+      kpi('Conversaciones', num(results), local ? 'Público local · 3 km' : 'Iniciadas por WhatsApp'),
+      kpi('Costo por conv.', cost(section.cost), 'Inversión ÷ conversaciones'),
+      kpi(local ? 'Alcance local' : 'Alcance', compact(cur.reach), `Suma diaria · frec. ${ratio2(cur.frequency)}`),
+      kpi('Clics al enlace', num(cur.clicks), local ? 'Hacia WhatsApp' : 'Hacia WhatsApp y web'),
+    ].join('');
+  }
+
+  function sectionPage(section, report, notes, page, total) {
+    const analysisKey = `analisis:${section.key}`;
+    const destacadoKey = `destacado:${section.key}`;
+    const subKey = `sub:${section.key}`;
+    // En ventas el panel de la derecha lleva el embudo y los publicos y ocupa toda la columna, como en el
+    // modelo; en los demas objetivos comparte la columna con el destacado.
+    const right = section.key === 'ventas'
+      ? sidePanel(section)
+      : `<div class="rp-pile">${sidePanel(section)}${insight('Destacado', destacadoKey, pick(notes, destacadoKey, suggestDestacado(section, report)))}</div>`;
+    return `
+      <section class="rp-page">
+        ${head(section.title, pick(notes, subKey, section.sub), report.labels.chip)}
+        <div class="rp-body">
+          <div class="rp-grid-kpis">${sectionTiles(section)}</div>
+          <div class="rp-split">
+            ${panel('chart', 'Análisis', '', editable(analysisKey, pick(notes, analysisKey, suggestAnalisis(section, report))))}
+            ${right}
+          </div>
+          ${bestAds(section)}
+        </div>
+        ${footer(section.key === 'ventas' ? `${report.labels.source} · valores de compra = atribución de Meta` : report.labels.source, report, page, total)}
+      </section>`;
+  }
+
+  function conclusionsPage(report, notes, page, total) {
+    const cards = report.objectives.slice(0, 3).map((objective, index) => {
+      const suggested = suggestConclusion(objective, report);
+      return `
+        <div class="rp-card rp-conclusion">
+          <div class="rp-toc-top"><span class="rp-icon framed">${icon(CONCLUSION_ICONS[objective.group.key] || 'chart')}</span><span class="rp-concl-num">${pageNumber(index + 1)}</span></div>
+          ${editable(`concl:${index}:title`, pick(notes, `concl:${index}:title`, suggested.title), 'h3')}
+          ${editable(`concl:${index}:text`, pick(notes, `concl:${index}:text`, suggested.text))}
+        </div>`;
+    }).join('');
+    const steps = suggestSteps(report).map((step, index) => `
+      <div class="rp-step${index === 0 ? ' first' : ''}">
+        <span class="rp-icon">${icon(step.icon)}</span>
+        <div class="rp-step-body">
+          ${editable(`paso:${index}:title`, pick(notes, `paso:${index}:title`, step.title), 'h3')}
+          ${editable(`paso:${index}:text`, pick(notes, `paso:${index}:text`, step.text))}
+        </div>
+      </div>`).join('');
+    return `
+      <section class="rp-page">
+        ${head('Conclusiones y próximos pasos', `Qué funcionó en ${report.labels.monthName} y qué se hará en las próximas semanas.`)}
+        <div class="rp-body">
+          <div class="rp-grid-3 rp-conclusions">${cards}</div>
+          <div class="rp-card">
+            <div class="rp-panel-head"><span class="rp-icon">${icon('flag')}</span><div class="rp-panel-title">Próximos pasos</div></div>
+            <div class="rp-steps">${steps}</div>
+          </div>
+          <div class="rp-note">${rich(`**Periodo:** ${report.labels.period}. Los valores de compra corresponden a la atribución de Meta Ads.`)}</div>
+        </div>
+        ${footer(`Fuente: análisis Lima Retail sobre ${CHANNEL} · ${BRAND} · ${report.labels.monthName} ${report.month.year}`, report, page, total)}
+      </section>`;
+  }
+
+  const closingPage = () => `
+    <section class="rp-page rp-closing">
+      <img src="${LOGO}" alt="Lima Retail">
+      <b>Lima Retail</b>
+      <span class="rp-closing-tag">Data Driven Marketing</span>
+      <span>Power KPI · Digital Analytics</span>
+    </section>`;
+
+  // ── Pintado ────────────────────────────────────────────────────────────
+  function fitDeck() {
+    const host = document.getElementById('week-report');
+    if (!host || !host.clientWidth) return;
+    host.style.setProperty('--rp-scale', String(Math.min(1, host.clientWidth / PAGE_WIDTH)));
+  }
+
+  function wireEditables(host, periodId) {
+    host.querySelectorAll('[data-note]').forEach(node => {
+      try { node.contentEditable = 'plaintext-only'; } catch { node.contentEditable = 'true'; }
+      node.spellcheck = false;
+      node.addEventListener('focus', () => { node.textContent = node.dataset.raw; });
+      node.addEventListener('input', () => {
+        node.dataset.raw = node.innerText.replace(/\n+$/, '');
+        saveNote(periodId, node.dataset.note, node.dataset.raw);
+      });
+      node.addEventListener('blur', () => { node.innerHTML = rich(node.dataset.raw); });
+    });
   }
 
   function render() {
     const host = document.getElementById('week-report');
     const select = document.getElementById('week-select');
     if (!host || !data) return;
-    const list = weeks(data.rows);
-    if (!list.length) {
-      if (select) select.innerHTML = '<option value="">Sin semanas cerradas</option>';
-      host.innerHTML = '<div class="panel"><div class="week-empty">Todavía no hay una semana cerrada de lunes a domingo con entregas en Meta Ads.</div></div>';
+    const months = data.months;
+    if (!months.length) {
+      if (select) select.innerHTML = '<option value="">Sin meses con datos</option>';
+      host.innerHTML = '<div class="panel"><div class="empty-state"><strong>Todavía no hay datos para el reporte</strong><span>El reporte se arma con las descargas de Meta Ads de la carpeta de Drive. En cuanto haya un mes con entregas, aparece aquí.</span></div></div>';
       return;
     }
-    if (!list.includes(selected)) selected = list[0];
-    if (select) select.innerHTML = list.map((monday, i) => `<option value="${monday}"${monday === selected ? ' selected' : ''}>${esc(rangeLabel(monday))}${i === 0 ? ' | última semana cerrada' : ''}</option>`).join('');
+    if (!months.some(month => month.id === selected)) selected = months[0].id;
+    const month = months.find(item => item.id === selected);
+    if (select) {
+      select.innerHTML = months.map(item => {
+        const first = Number(item.firstDay.slice(8, 10));
+        const last = Number(item.lastDay.slice(8, 10));
+        return `<option value="${esc(item.id)}"${item.id === selected ? ' selected' : ''}>${esc(`${item.name} ${item.year} · ${first} – ${last} ${SHORT[item.index]}`)}${item.closed ? '' : ' · mes en curso'}</option>`;
+      }).join('');
+    }
 
-    const r = buildReport(selected);
-    const saved = readNotes()[selected] || {};
-    const notes = { ...suggested(r), ...saved };
-    const active = r.groups.filter(x => x.active);
-    charts.forEach(chart => chart.destroy());
-    charts = [];
-
+    const report = buildReport(month);
+    const notes = readNotes()[month.id] || {};
+    const pages = { summary: 3, distribution: 4, firstSection: 5, conclusions: 5 + report.sections.length };
+    const total = pages.conclusions + 1;
     host.innerHTML = `
-      ${r.missing.length ? `<div class="data-notice warn week-warn">La descarga de Meta llega hasta el ${esc(dayLabel(data.lastDay))}: faltan ${esc(r.missing.map(dayLabel).join(', '))}, así que los totales pueden subir. Sincroniza con Drive cuando el equipo suba la descarga completa.</div>` : ''}
-      <div class="week-doc" id="week-doc">
-        <section class="week-slide week-cover">
-          <div class="week-cover-mark">M</div>
-          <div class="week-cover-title">Reporte Ads</div>
-          <div class="week-cover-period">Semana ${esc(rangeLabel(r.monday))}</div>
-          <div class="week-cover-meta"><span>Cliente: ${esc(BRAND)}</span><span>Periodo: ${esc(longRange(r.monday))}</span><span>Comparado con: ${esc(rangeLabel(r.prevMonday))}</span></div>
-          <div class="week-cover-foot">LIMA RETAIL | DATA DRIVEN MARKETING<br>POWER KPI | DIGITAL ANALYTICS</div>
-        </section>
-
-        <section class="week-slide">
-          ${slideHead('Resumen Ejecutivo', `${rangeLabel(r.monday)} | Inversión total: ${money(r.total.spend)} | Meta Ads: ${active.map(x => x.group.key).join(' - ') || 'sin entrega'}`)}
-          <div class="week-summary">${r.groups.filter(x => GROUPS[x.group.key]).map(x => `
-            <div class="week-summary-row" style="--gc:${x.group.color}">
-              <div class="week-summary-name">${esc(x.group.label)}${x.active ? '' : ' <small>(sin entrega esta semana)</small>'}</div>
-              ${kpiRow(x, x.group.summary)}
-            </div>`).join('')}
-          </div>
-          <div class="week-analysis"><div class="week-sub-title">Estrategia</div>${editable('estrategia', notes.estrategia, 2)}</div>
-          ${slideFoot(r)}
-        </section>
-
-        <section class="week-slide">
-          ${slideHead('Distribución de Inversión', 'Cómo se repartió la inversión entre los objetivos')}
-          <div class="week-cols">
-            <div class="week-donut"><canvas id="week-donut" role="img" aria-label="Distribución de la inversión por objetivo"></canvas></div>
-            <div>
-              <div class="week-sub-title">Resumen por objetivo</div>
-              <table class="data-table week-table"><thead><tr><th>Objetivo</th><th class="num">Gasto</th><th class="num">%</th><th class="num">Result.</th><th class="num">Sem. anterior</th></tr></thead><tbody>
-                ${r.groups.map(x => `<tr><td><i class="week-dot" style="background:${x.group.color}"></i>${esc(x.group.short)}</td><td class="num">${money(x.now.spend)}</td><td class="num">${pct(ratio(x.now.spend, r.total.spend) * 100)}</td><td class="num">${count(x.now.results)} ${esc(x.group.unit)}</td><td class="num">${money(x.before.spend)}</td></tr>`).join('')}
-                <tr class="week-total"><td>Total</td><td class="num">${money(r.total.spend)}</td><td class="num">100%</td><td class="num">${count(r.total.clicks)} clics</td><td class="num">${money(r.totalBefore.spend)}</td></tr>
-              </tbody></table>
-            </div>
-          </div>
-          <div class="week-analysis"><div class="week-sub-title">Análisis</div>${editable('distribucion', notes.distribucion)}</div>
-          ${slideFoot(r)}
-        </section>
-
-        ${r.groups.map(x => groupSlide(x, r, notes)).join('')}
-
-        <section class="week-slide">
-          ${slideHead('Conclusiones y Recomendaciones', '')}
-          <div class="week-conclusions">${['c1', 'c2', 'c3'].map((key, i) => `
-            <div class="week-conclusion"><b>${['&#9733;', '&#9670;', '&#8593;'][i]}</b><div class="week-sub-title">${NOTE_TITLES[key]}</div>${editable(key, notes[key], 5)}</div>`).join('')}
-          </div>
-          ${slideFoot(r)}
-        </section>
-
-        <section class="week-slide week-cover week-closing">
-          <div class="week-cover-title">LIMA RETAIL</div>
-          <div class="week-cover-period">DATA DRIVEN MARKETING</div>
-        </section>
+      <div class="rp-deck" id="week-doc">
+        ${coverPage(report)}
+        ${contentsPage(report, pages, total)}
+        ${summaryPage(report, notes, pages.summary, total)}
+        ${distributionPage(report, notes, pages.distribution, total)}
+        ${report.sections.map((section, index) => sectionPage(section, report, notes, pages.firstSection + index, total)).join('')}
+        ${conclusionsPage(report, notes, pages.conclusions, total)}
+        ${closingPage()}
       </div>`;
-
-    renderDonut(r);
-    host.querySelectorAll('[data-week-note]').forEach(field => {
-      field.addEventListener('input', () => {
-        saveNote(r.monday, field.dataset.weekNote, field.value);
-        const copy = host.querySelector(`[data-print-for="${CSS.escape(field.dataset.weekNote)}"]`);
-        if (copy) copy.textContent = field.value;
-      });
-    });
-  }
-
-  function renderDonut(r) {
-    const canvas = document.getElementById('week-donut');
-    if (!canvas || typeof global.Chart !== 'function') return;
-    const groups = r.groups.filter(x => x.now.spend > 0);
-    charts.push(new global.Chart(canvas, {
-      type: 'doughnut',
-      data: { labels: groups.map(x => x.group.short), datasets: [{ data: groups.map(x => Math.round(x.now.spend * 100) / 100), backgroundColor: groups.map(x => x.group.color), borderWidth: 2, borderColor: '#fff' }] },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%',
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, generateLabels: chart => chart.data.labels.map((label, i) => ({ text: `${label} ${pct(chart.data.datasets[0].data[i] / r.total.spend * 100)}`, fillStyle: chart.data.datasets[0].backgroundColor[i], strokeStyle: '#fff', index: i })) } },
-          tooltip: { callbacks: { label: context => ` ${context.label}: ${money(context.raw)}` } },
-        },
-      },
-    }));
-  }
-
-  // El nombre del PDF lo pone el navegador con el titulo del documento: se cambia solo mientras imprime.
-  function printReport() {
-    if (!selected) return;
-    const title = document.title;
-    document.title = fileName(selected);
-    document.body.classList.add('printing-week');
-    const restore = () => { document.title = title; document.body.classList.remove('printing-week'); global.removeEventListener('afterprint', restore); };
-    global.addEventListener('afterprint', restore);
-    charts.forEach(chart => chart.resize());
-    global.print();
-    setTimeout(restore, 2000);
+    fitDeck();
+    wireEditables(host, month.id);
   }
 
   async function renderModel() {
@@ -445,7 +935,21 @@
     const model = await global.ReportsArchive?.latestReport?.();
     host.innerHTML = model
       ? `Modelo: <a href="${esc(model.viewUrl)}" target="_blank" rel="noopener">${esc(model.title)}</a> (último reporte subido a la carpeta)`
-      : 'Modelo: el último reporte de la carpeta de reportes de Drive';
+      : 'Modelo: el formato estándar de la agencia, igual para todas las marcas';
+  }
+
+  // El nombre del PDF lo pone el navegador con el titulo del documento: se cambia solo mientras imprime.
+  function printReport() {
+    if (!selected || !data) return;
+    const month = data.months.find(item => item.id === selected);
+    if (!month) return;
+    document.activeElement?.blur?.();
+    const title = document.title;
+    document.title = buildReport(month).labels.file;
+    const restore = () => { document.title = title; global.removeEventListener('afterprint', restore); };
+    global.addEventListener('afterprint', restore);
+    global.print();
+    global.setTimeout(restore, 2000);
   }
 
   async function init() {
@@ -455,19 +959,23 @@
       document.getElementById('week-select')?.addEventListener('change', event => { selected = event.target.value; render(); });
       document.getElementById('week-print')?.addEventListener('click', printReport);
       document.getElementById('week-reset')?.addEventListener('click', () => {
-        if (selected && global.confirm('Se descartan los textos editados de esta semana y vuelven los propuestos. ¿Continuar?')) { resetNotes(selected); render(); }
+        if (selected && global.confirm('Se descartan los textos editados de este mes y vuelven los propuestos. ¿Continuar?')) { resetNotes(selected); render(); }
       });
+      if (host && typeof global.ResizeObserver === 'function') {
+        resizeObserver = new global.ResizeObserver(fitDeck);
+        resizeObserver.observe(host);
+      }
       // Una sincronizacion con Drive trae datos nuevos: se vuelven a leer al abrir otra vez el generador.
       global.addEventListener('tlm:data-updated', () => { data = null; });
     }
     renderModel();
     if (data) { render(); return; }
-    if (host) host.innerHTML = '<div class="panel"><div class="week-empty">Cargando los datos por día...</div></div>';
+    if (host) host.innerHTML = '<div class="panel"><div class="week-empty">Cargando los datos del mes...</div></div>';
     try {
       await load();
       render();
     } catch (error) {
-      if (host) host.innerHTML = `<div class="panel"><div class="week-empty">No se pudieron cargar los datos por día (${esc(error.message)}).</div></div>`;
+      if (host) host.innerHTML = `<div class="panel"><div class="week-empty">No se pudieron cargar los datos de Meta Ads (${esc(error.message)}).</div></div>`;
     }
   }
 
