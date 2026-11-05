@@ -170,7 +170,7 @@
     {
       key: 'tienda', icon: 'store', title: 'Mensajes a tienda · radio 3 km', short: 'Mensajes a tienda',
       toc: 'Mensajes con segmentación local (radio 3 km).',
-      sub: 'Mensajes con segmentación local, dirigidos solo al público dentro de un radio de 3 km alrededor de la tienda física para atraer visitas y clientes del barrio.',
+      sub: 'Mensajes con segmentación local: solo al público dentro de un radio de 3 km alrededor de la tienda física.',
       metric: 'conversations', one: 'conversación', many: 'conversaciones', tag: 'Mensaje local', rest: 'Otras piezas de mensajes a tienda',
       match: ad => ad.group === 'Mensajes' && isLocal(ad.adSet),
     },
@@ -349,6 +349,13 @@
     const { cur, results, cost: unit } = section;
     const best = section.ads[0];
     if (section.key === 'ventas') {
+      // Sin compras no hay CPA ni ROAS que leer: la lamina dice lo que si se puede afirmar.
+      if (!results) {
+        const lines = [`**Qué pasó:** la campaña de ventas invirtió ${money(cur.spend)} sin compras atribuidas en el periodo.`];
+        if (cur.addToCart > 0) lines.push(`**Dónde quedó:** ${num(cur.addToCart)} añadidos al carrito y ${num(cur.checkouts)} pagos iniciados: hay interés que todavía no se cierra.`);
+        lines.push('**Qué revisar:** la oferta, las piezas y el paso de pago de la web.');
+        return lines.join(' ');
+      }
       const lines = [`**Qué pasó: ${num(results)} ${results === 1 ? 'compra' : 'compras'}** por ${money(cur.spend)}, ROAS ${ratio2(cur.roas)} y CPA ${cost(unit)}.`];
       if (best && best.result > 0) lines.push(`**Qué lo trajo:** la pieza **"${best.name}"** convirtió a CPA ${cost(best.cost)} (ROAS ${ratio2(best.roas)}) con ${money(best.spend)} de inversión.`);
       const sinCompras = section.ads.filter(ad => !ad.result).reduce((total, ad) => total + ad.spend, 0);
