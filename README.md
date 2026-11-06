@@ -149,17 +149,29 @@ donde la plataforma dice 134 y 31, y ponia las 6 compras del mes en el conjunto 
 
 ### La pestana "Nexus Meta" (desde la v1.6.0)
 
-Nexus escribe en la misma hoja del mes una pestana propia, `Nexus Meta`, con el contrato `NEXUS_META_V1`:
-la fila 1 identifica contrato, captura, cuenta, moneda, mes y corte, y la fila 2 son las columnas. El
-barrido la lee **solo para los dias que la exportacion todavia no trae**; un dia ya exportado manda siempre,
-porque sus filas son mas ricas y mezclar los dos origenes en el mismo dia duplicaria el gasto.
+Nexus escribe una pestana propia, `Nexus Meta`, con el contrato `NEXUS_META_V1`: la fila 1 identifica
+contrato, captura, cuenta, moneda, mes y corte, y la fila 2 son las columnas. Son las filas de la API,
+un dia por fila.
+
+**Mandan sobre la exportacion del mismo dia** (desde la v1.12.0). Hasta entonces era al reves —un dia ya
+exportado ganaba siempre—, y por eso el tablero no cuadraba con Ads Manager: la exportacion viene
+desglosada por dia, edad y sexo, y Meta deja fuera de ese desglose medio punto porcentual del gasto. En
+octubre de 2026 la hoja sumaba S/ 1,115.25 y 164 conversaciones donde la plataforma dice S/ 1,120.56 y
+165; el desvio era proporcional en las tres campanas. Con las filas de la API el mes cuadra al centimo.
 
 De esa pestana se usan unicamente las filas de nivel `ad`: los niveles (`campaign`, `adset`, `ad`) son el
 mismo gasto contado tres veces y sumarlos lo triplicaria. El contrato trae menos columnas que la
-exportacion, asi que esos dias **no suman embudo (visitas a la web, carrito, pagos iniciados), ni desglose
-por edad y sexo, ni vista previa del anuncio**, y tampoco alcance ni ThruPlays salvo que el destino de esa
-cuenta en Nexus tenga activado `extended_fields`. Edad y sexo van como `Unknown`, la etiqueta que Meta usa
-para lo que no sabe y que el tablero ya descarta al elegir su segmento.
+exportacion, asi que de la exportacion del mismo dia se siguen tomando dos cosas, pegadas a la fila de la
+API por dia, campana, conjunto y anuncio: **el embudo (visitas a la web, carrito, pagos iniciados) y el
+enlace de vista previa**. El **desglose por edad y sexo** tambien sale de la exportacion, pero aparte: sus
+filas no entran en los totales, solo en el bloque `segments`, asi que la suma de los segmentos se queda
+en lo que Meta desglosa y puede no cuadrar con el total del mes. Un dia que la exportacion no cubre va
+solo con lo que manda la API: sin embudo, sin enlace y con edad y sexo en `Unknown`; el alcance y los
+ThruPlays llegan si el destino de esa cuenta en Nexus tiene activado `extended_fields`.
+
+Las dos carpetas de Meta tienen la hoja del mismo mes con el mismo nombre. `drive-download.py` ya no
+descarta la segunda por repetida: la guarda con sufijo (`... (2).xlsx`) y `build-ads-data.py` lee todas
+las hojas del mes. La que nombra el mes en el tablero es la que no lleva sufijo.
 
 Nexus guarda los nombres crudos de Meta, asi que el barrido los traduce a los de la exportacion antes de
 mezclarlos: el indicador del resultado (`video_thruplay_watched_actions` pasa a `ThruPlay`, y de ahi salen
@@ -167,9 +179,9 @@ los ThruPlays del mes) y el objetivo (`OUTCOME_SALES` pasa a `Ventas`). Sin esa 
 campana que solo apareciera en los dias de Nexus se agruparia bajo un grupo inventado, `OUTCOME_SALES`.
 
 El mes afectado lleva un bloque `nexus` (`from`, `to`, `days`, `missing`) y el tablero lo dice en la linea
-de fuente: «del 30 al 31 de octubre desde Nexus (sin alcance, embudo, desglose por edad, vista previa)».
-Un mes recien creado que solo tenga la pestana de Nexus tambien se lee: la exportacion dejo de ser
-obligatoria.
+de fuente: «del 1 al 31 de octubre desde la API de Meta (Nexus)», y entre parentesis lo que falte, solo
+si falta algo. Un mes recien creado que solo tenga la pestana de Nexus tambien se lee: la exportacion
+dejo de ser obligatoria.
 
 Para correrlo a mano:
 
@@ -250,15 +262,9 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
     el navegador (`tlm-report-notes-v2`). "Restaurar textos" vuelve a los propuestos.
   - "Descargar PDF" abre la impresion del navegador (una lamina por pagina, 1280x720) con el nombre
     `The-Little-Market-Reporte-Meta-Ads-<Mes>-<Ano>`.
-  - **El total no cuadra al centimo con Ads Manager.** La exportacion de Drive viene desglosada por dia,
-    edad y sexo, y Meta deja fuera de ese desglose una parte del gasto: en octubre de 2026 la hoja suma
-    S/ 1,115.25 y la plataforma S/ 1,120.56 (−0.47 %), y 164 conversaciones frente a 165. El desvio es
-    proporcional en las tres campanas. Los numeros exactos **ya llegan a Drive**: la pestana "Nexus Meta"
-    de la carpeta que llena Nexus trae las filas de la API (campana, conjunto y anuncio por dia) y suma
-    exactamente lo que dice la plataforma. Hoy `build-ads-data.py` solo las usa para los dias que la
-    exportacion todavia no cubre, asi que en un mes ya exportado se descartan. Para que el tablero cuadre
-    al centimo habria que darles prioridad; falta que Nexus mande tambien el embudo y el alcance
-    (`extended_fields` en el destino de la marca), que el contrato trae pero esta cuenta no esta enviando.
+  - **Los numeros son los de la plataforma** (desde la v1.12.0): los dias que trae la pestana "Nexus Meta"
+    se cuentan con las filas de la API y cuadran al centimo con Ads Manager. En octubre de 2026 el tablero
+    daba S/ 1,115.25 y 164 conversaciones y ahora da S/ 1,120.56 y 165, que es lo que dice la plataforma.
   - El alcance es la **suma de las filas diarias**, no el alcance sin duplicar de Meta: las tarjetas lo dicen
     ("Suma diaria") y por eso la frecuencia que sale de ahi es menor que la de la plataforma. Para publicarlo
     como personas unicas haria falta traer el alcance del mes desde Meta, que la exportacion por dia no trae.

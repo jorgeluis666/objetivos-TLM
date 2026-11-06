@@ -12,9 +12,13 @@ Reglas:
     una copia del mes anterior), el mes queda sin datos y se avisa en "warnings".
   - Grupos de campana: Ventas (objetivo Ventas: compras en la web), Mensajes (WhatsApp y visitas al perfil
     de Instagram) y Reconocimiento (resultado ThruPlay).
-  - Si la hoja trae ademas la pestana "Nexus Meta" (contrato NEXUS_META_V1), sus filas de nivel anuncio
-    completan los dias que la exportacion todavia no cubre. Nunca reemplazan un dia ya exportado, y ese
-    contrato trae menos columnas: lo que no manda queda en cero y el mes lo dice en "nexus".
+  - La pestana "Nexus Meta" (contrato NEXUS_META_V1) trae las filas de la API, un dia por fila y a nivel
+    anuncio. **Mandan sobre la exportacion del mismo dia**: la exportacion viene desglosada por dia, edad
+    y sexo y Meta deja fuera de ese desglose medio punto porcentual del gasto, asi que el tablero no
+    cuadraba con Ads Manager (octubre de 2026: S/ 1,115.25 contra S/ 1,120.56). De la exportacion de ese
+    dia se siguen tomando el embudo y el enlace de vista previa, que el contrato no manda, y el desglose
+    por edad y sexo, que se arma solo con sus filas. Lo que falte queda en cero y el mes lo dice en
+    "nexus". Un mes puede venir en dos hojas (la historica y la de Nexus): se leen las dos.
 
 Uso:
   python scripts/build-ads-data.py [--root "G:/Mi unidad/.../The Little Market"]
@@ -83,9 +87,8 @@ NEXUS_OBJECTIVES = {
     'lead_generation': 'Clientes potenciales', 'messages': 'Mensajes', 'conversions': 'Conversiones',
     'reach': 'Alcance', 'video_views': 'Reproducciones de video',
 }
-# Lo que ese contrato no trae nunca. El alcance y el embudo no estan aqui: se miran en los datos, porque
-# llegan si el destino los manda.
-NEXUS_ABSENT = ('desglose por edad', 'vista previa')
+# El alcance, el embudo, la vista previa y el desglose por edad no estan aqui: se miran en los datos,
+# porque el embudo y el enlace llegan de la exportacion del mismo dia y el alcance, si el destino lo manda.
 SUMMED = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
           'conversations', 'interactions']
 METRICS = SUMMED + ['profileVisits', 'thruplays']
@@ -149,13 +152,18 @@ def group_of(name, objective):
     return GROUPS.get(norm(objective), str(objective or 'Otros').strip())
 
 
-def month_file(folder, month):
-    """Hoja del mes: por nombre ("Octubre.xlsx", "The Little Market - Octubre 2026.xlsx") o por el rango de
-    fechas de la exportacion ("..._20261001-20261031.xlsx")."""
-    for path in sorted(glob.glob(os.path.join(folder, '*.xlsx'))):
-        if is_month_name(os.path.basename(path), month):
-            return path
-    return None
+def month_files(folder, month):
+    """Hojas del mes: por nombre ("Octubre.xlsx", "The Little Market - Octubre 2026.xlsx") o por el rango de
+    fechas de la exportacion ("..._20261001-20261031.xlsx").
+
+    Son varias porque el mes puede venir en dos hojas: la historica con la exportacion de Meta y la que
+    llena Nexus con las filas de la API."""
+    paths = [path for path in sorted(glob.glob(os.path.join(folder, '*.xlsx')))
+             if is_month_name(os.path.basename(path), month)]
+    # La hoja que nombra el mes en el tablero es la que no lleva sufijo: la historica, la que edita el
+    # equipo. drive-download.py le pone " (2)" a la segunda carpeta que trae el mismo nombre.
+    paths.sort(key=lambda path: bool(re.search(r' \(\d+\)\.xlsx$', os.path.basename(path))))
+    return paths
 
 
 def is_month_name(file_name, month):
@@ -165,19 +173,87 @@ def is_month_name(file_name, month):
                 or (span and int(span.group(1)) == YEAR and int(span.group(2)) == MONTHS.index(month) + 1))
 
 
-def read_rows(path):
+def read_file(path):
+    """Las filas de una hoja, separadas por origen: exportacion de Meta y pestana de Nexus."""
     book = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
-        records = export_rows(book, path)
+        exported = export_rows(book, path)
     except ValueError:
         # Un mes recien creado puede tener solo la pestana de Nexus, sin exportacion todavia.
         if nexus_sheet(book) is None:
             book.close()
             raise
-        records = []
-    records += nexus_rows(book, {row['day'] for row in records})
+        exported = []
+    nexus = nexus_rows(book)
     book.close()
-    return records
+    return exported, nexus
+
+
+def ad_key(row):
+    return (row['day'], row['campaign'], str(row.get('adSet') or '').strip(), str(row.get('ad') or '').strip())
+
+
+def month_rows(paths):
+    """Las filas del mes con la API por delante.
+
+    Un dia que la pestana de Nexus trae se cuenta con sus filas, porque son las de la API y suman lo
+    mismo que dice Ads Manager; la exportacion de ese dia viene desglosada por dia, edad y sexo y Meta
+    deja fuera de ese desglose medio punto porcentual del gasto. De la exportacion se siguen tomando dos
+    cosas que el contrato de Nexus no manda: el embudo del dia (visitas a la web, carrito y pagos
+    iniciados) y el enlace de vista previa del anuncio, que se pegan a la fila de la API; y el desglose
+    por edad y sexo, que se arma solo con sus filas. Un dia que Nexus no trae se cuenta como siempre."""
+    exported, nexus, errors = [], [], []
+    for path in paths:
+        try:
+            from_export, from_nexus = read_file(path)
+        except ValueError as error:
+            errors.append(error)
+            continue
+        exported += from_export
+        nexus += from_nexus
+    if errors and not exported and not nexus:
+        raise errors[0]
+    nexus_days = {row['day'] for row in nexus}
+    if not nexus_days:
+        return exported
+    extra = {}
+    for row in exported:
+        if row['day'] not in nexus_days:
+            continue
+        slot = extra.setdefault(ad_key(row), {key: 0.0 for key in FUNNEL})
+        for key in FUNNEL:
+            slot[key] += num(row.get(key))
+        url = row.get('preview')
+        if not slot.get('preview') and isinstance(url, str) and url.startswith('https://'):
+            slot['preview'] = url
+    for row in nexus:
+        slot = extra.get(ad_key(row))
+        if not slot:
+            continue
+        for key in FUNNEL:
+            row[key] = slot[key]
+        if slot.get('preview'):
+            row['preview'] = slot['preview']
+    export_days = {row['day'] for row in exported}
+    for row in exported:
+        # Un dia que ya trae la API solo aporta el desglose por edad y sexo.
+        if row['day'] in nexus_days:
+            row['only'] = 'segment'
+    for row in nexus:
+        # Y sus filas no entran al desglose, que ya ponen las de la exportacion.
+        if row['day'] in export_days:
+            row['only'] = 'totals'
+    return nexus + exported
+
+
+# Un dia que la API ya trae se cuenta con sus filas; las de la exportacion de ese dia solo sirven para el
+# desglose por edad y sexo, que la API no manda.
+def for_totals(row):
+    return row.get('only') != 'segment'
+
+
+def for_segments(row):
+    return row.get('only') != 'totals'
 
 
 def export_rows(book, path):
@@ -218,12 +294,11 @@ def result_type_of(indicator):
     return next((label for needle, label in NEXUS_RESULTS if needle in text), '')
 
 
-def nexus_rows(book, exported):
-    """Filas de nivel anuncio de la pestana de Nexus, solo de los dias que la exportacion no trae.
+def nexus_rows(book):
+    """Filas de nivel anuncio de la pestana de Nexus: las de la API, un dia por fila.
 
-    Un dia ya exportado manda siempre: sus filas son mas ricas y mezclar los dos origenes en el mismo dia
-    duplicaria el gasto. Edad y sexo van como "Unknown", que es la etiqueta de Meta para lo que no sabe y
-    la que el reporte semanal ya descarta al elegir su segmento."""
+    Mandan sobre la exportacion del mismo dia (lo decide month_rows). Edad y sexo van como "Unknown", que
+    es la etiqueta de Meta para lo que no sabe, porque el contrato no trae el desglose."""
     sheet = nexus_sheet(book)
     if sheet is None:
         return []
@@ -236,7 +311,7 @@ def nexus_rows(book, exported):
         row = {key: value for key, value in zip(keys, values) if key}
         row['day'] = to_date(row.get('day'))
         row['campaign'] = str(row.get('campaign') or '').strip()
-        if norm(row.pop('level', '')) != 'ad' or not row['day'] or not row['campaign'] or row['day'] in exported:
+        if norm(row.pop('level', '')) != 'ad' or not row['day'] or not row['campaign']:
             continue
         row['age'], row['sex'], row['nexus'] = 'Unknown', 'unknown', True
         row['resultType'] = result_type_of(row.get('resultType'))
@@ -378,16 +453,19 @@ def daily_table(rows, cutoff):
         name = row['campaign']
         if name not in groups:
             groups[name] = group_of(name, row.get('objective'))
+        offset = (row['day'] - first).days
+        if for_segments(row):
+            segment = (offset, groups[name], str(row.get('age') or '').strip() or '?', norm(row.get('sex')) or '?')
+            add(by_segment.setdefault(segment, zero()), row)
+        if not for_totals(row):
+            continue
         campaign = campaigns.setdefault(name, len(campaigns))
         ad_name = str(row.get('ad') or '').strip() or '(sin nombre)'
         ad = ads.setdefault(ad_name, {'index': len(ads), 'url': None})
         url = row.get('preview')
         if not ad['url'] and isinstance(url, str) and url.startswith('https://'):
             ad['url'] = url
-        offset = (row['day'] - first).days
         add(by_ad.setdefault((offset, campaign, ad['index']), zero()), row)
-        segment = (offset, groups[name], str(row.get('age') or '').strip() or '?', norm(row.get('sex')) or '?')
-        add(by_segment.setdefault(segment, zero()), row)
     labels = {part: sorted({key[index] for key in by_segment}) for index, part in ((1, 'groups'), (2, 'ages'), (3, 'sexes'))}
     return {
         'firstDay': first.isoformat(),
@@ -416,17 +494,17 @@ def build(drive):
                      f'({item["error"]}); se vuelve a intentar en la proxima.' for name, item in failed]
     months, all_rows = [], []
     for index, month in enumerate(MONTHS):
-        path = month_file(folder, month)
+        paths = month_files(folder, month)
         entry = {'name': month, 'status': 'sin-datos', 'period': None, 'sheet': None, 'firstDay': None, 'lastDay': None,
                  'kpis': None, 'spendByGroup': {}, 'campaigns': []}
         months.append(entry)
-        if not path:
+        if not paths:
             continue
-        file_name = os.path.basename(path)
+        file_name = os.path.basename(paths[0])
         entry['sheet'] = {'title': os.path.splitext(file_name)[0], 'id': ids.get(file_name)}
         # Una hoja mal formada no detiene la sincronizacion: el mes queda sin datos y el tablero lo avisa.
         try:
-            rows = read_rows(path)
+            rows = month_rows(paths)
         except ValueError as error:
             warnings_list.append(f'{month}: la hoja "{entry["sheet"]["title"]}" no se pudo leer '
                                  f'({str(error).split(": ", 1)[-1]}).')
@@ -440,15 +518,24 @@ def build(drive):
             entry['notice'] = 'La hoja no trae dias de este mes'
             continue
         all_rows.extend(inside)
-        campaigns = campaigns_of(inside)
+        # Las cifras del mes salen de las filas que mandan; las de la exportacion de un dia que ya trae la
+        # API quedan solo para el desglose por edad y sexo.
+        main = [row for row in inside if for_totals(row)]
+        campaigns = campaigns_of(main)
         if not campaigns:
             continue
-        from_nexus = [row for row in inside if row.get('nexus')]
+        from_nexus = [row for row in main if row.get('nexus')]
         if from_nexus:
-            # Lo que esos dias no traen se dice en la linea de fuente del tablero. Embudo y alcance se
-            # miran en los datos y no se dan por perdidos: llegan si el destino los manda.
+            # Lo que esos dias no traen se dice en la linea de fuente del tablero. Embudo, alcance y vista
+            # previa se miran en los datos: el embudo y el enlace llegan de la exportacion del mismo dia
+            # cuando la hay, y el alcance solo si el destino de Nexus lo manda.
             nexus_days = sorted({row['day'] for row in from_nexus})
-            missing = list(NEXUS_ABSENT)
+            con_export = {row['day'] for row in inside if not row.get('nexus')}
+            missing = []
+            if any(day not in con_export for day in nexus_days):
+                missing.append('desglose por edad')
+            if not any(isinstance(row.get('preview'), str) for row in from_nexus):
+                missing.append('vista previa')
             if not any(num(row.get(key)) for row in from_nexus for key in FUNNEL):
                 missing.insert(0, 'embudo')
             if not any(num(row.get('reach')) for row in from_nexus):
@@ -456,14 +543,14 @@ def build(drive):
             entry['nexus'] = {'from': nexus_days[0].isoformat(), 'to': nexus_days[-1].isoformat(),
                               'days': len(nexus_days), 'missing': missing}
         totals = zero()
-        for row in inside:
+        for row in main:
             add(totals, row)
-        days = sorted(row['day'] for row in inside if num(row.get('spend')) > 0)
+        days = sorted(row['day'] for row in main if num(row.get('spend')) > 0)
         by_group = {}
         for campaign in campaigns:
             by_group[campaign['group']] = round(by_group.get(campaign['group'], 0) + campaign['spend'], 2)
         entry.update({'firstDay': days[0].isoformat(), 'lastDay': days[-1].isoformat(), 'kpis': rounded(totals),
-                      'spendByGroup': by_group, 'campaigns': campaigns, 'ads': ads_table(inside)})
+                      'spendByGroup': by_group, 'campaigns': campaigns, 'ads': ads_table(main)})
 
     with_data = [i for i, month in enumerate(months) if month['kpis']]
     cutoff = None

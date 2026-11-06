@@ -455,8 +455,8 @@
       const days = month.firstDay && month.lastDay ? `pauta del ${longDate(month.firstDay)} al ${longDate(month.lastDay)}` : '';
       const daily = period.compare?.real.length ? `${MONTHS[period.index - 1]} del informe por día` : '';
       // Días que la exportación todavía no cubre y completa la pestaña de Nexus, con lo que ese origen no trae.
-      const nexus = month.nexus ? `del ${longDate(month.nexus.from)} al ${longDate(month.nexus.to)} desde Nexus `
-        + `(sin ${month.nexus.missing.join(', ')})` : '';
+      const nexus = month.nexus ? `del ${longDate(month.nexus.from)} al ${longDate(month.nexus.to)} desde la API de Meta (Nexus)`
+        + (month.nexus.missing.length ? ` (sin ${month.nexus.missing.join(', ')})` : '') : '';
       source = [`Fuente: ${month.sheet ? `hoja "${month.sheet.title}"` : 'exportación de Meta Ads'}`, days, campaigns, daily, nexus];
     }
     document.getElementById('period-title').textContent = title;

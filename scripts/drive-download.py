@@ -113,25 +113,37 @@ def fetch_with_retries(url, target):
         time.sleep(wait)
 
 
+def free_name(file_name, taken):
+    """Un nombre que no choque con los que ya bajaron: "Octubre 2026.xlsx", "Octubre 2026 (2).xlsx"...
+
+    Las dos carpetas de Meta tienen la hoja del mismo mes con el mismo nombre, y no son la misma hoja: la
+    historica trae la exportacion desglosada por edad y sexo y la de Nexus, las filas de la API. Antes la
+    segunda se descartaba por repetida y el tablero nunca veia las cifras de la API."""
+    if file_name not in taken:
+        return file_name
+    stem, extension = os.path.splitext(file_name)
+    for index in range(2, 100):
+        candidate = f'{stem} ({index}){extension}'
+        if candidate not in taken:
+            return candidate
+    return file_name
+
+
 def download_folder(folder_id, target_dir, extensions, sheets, taken):
     """Descarga lo que usan los scripts y devuelve el listado completo (con los IDs de Drive).
 
     Un archivo que no baja tras los reintentos no detiene la sincronizacion: queda en el manifest con
     "error" (y sin "file") y build-ads-data.py lo pasa a los avisos del tablero.
-    `taken` son los nombres que ya trajo una carpeta anterior: esos no se vuelven a bajar."""
+    `taken` son los nombres que ya bajaron: uno repetido se guarda con un sufijo, no se descarta."""
     entries = []
     for entry in list_folder(folder_id):
         item = {'id': entry['id'], 'name': entry['name'], 'mimeType': entry['mimeType'], 'modified': entry['modified'], 'file': None}
         if sheets and entry['mimeType'] == SHEET_MIME:
-            item['file'] = entry['name'] + '.xlsx'
+            item['file'] = free_name(entry['name'] + '.xlsx', taken)
             url = SHEET_EXPORT_URL.format(id=entry['id'])
         elif entry['name'].lower().endswith(extensions):
-            item['file'] = entry['name']
+            item['file'] = free_name(entry['name'], taken)
             url = FILE_URL.format(id=entry['id'])
-        if item['file'] and item['file'] in taken:
-            item.update(file=None, repetido=True)
-            entries.append(item)
-            continue
         error = item['file'] and fetch_with_retries(url, os.path.join(target_dir, item['file']))
         if error:
             print(f'[drive] no se pudo descargar "{entry["name"]}" ({entry["id"]}): {error}', file=sys.stderr)
