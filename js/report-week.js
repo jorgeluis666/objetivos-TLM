@@ -215,6 +215,14 @@
     if (!cur.spend) return null;
     const ranked = ads.map(ad => adStats(ad, spec.metric))
       .sort((left, right) => right.result - left.result || right.spend - left.spend);
+    // Una misma pieza puede correr en dos conjuntos de la misma lamina (el "40% OFF" en remarketing y en
+    // publico amplio): entonces el nombre lleva su publico, como en el modelo, para no verse repetido.
+    const veces = ranked.reduce((count, ad) => ({ ...count, [ad.name]: (count[ad.name] || 0) + 1 }), {});
+    ranked.forEach(ad => {
+      ad.label = veces[ad.name] > 1 ? `${ad.name} · ${audienceLabel(ad.adSet).split(' · ')[0]}` : ad.name;
+      // El nombre con el que se nombra la pieza en toda la lamina (tarjetas, barras y textos).
+      ad.name = ad.label;
+    });
     const results = resultOf(cur, spec.metric);
     return {
       ...spec,
@@ -573,7 +581,7 @@
       <article class="rp-best-card${index === 0 ? ' best' : ''}">
         <div class="rp-best-body">
           <div class="rp-best-top">
-            <span class="rp-best-name" title="${esc(ad.name)}">${esc(ad.name)}</span>
+            <span class="rp-best-name" title="${esc(ad.label || ad.name)}">${esc(ad.label || ad.name)}</span>
             <span class="rp-best-tag">${esc(ad.format ? `${ad.format} · ${section.tag}` : section.tag)}</span>
           </div>
           <dl class="rp-best-figs">${figures(ad).map(([label, value, mark]) => `<div><dt>${esc(label)}</dt><dd${mark ? ' class="mark"' : ''}>${value}</dd></div>`).join('')}</dl>
@@ -582,7 +590,7 @@
     const note = rest.length ? `
       <div class="rp-best-note">
         <b>${esc(section.rest || 'Otras piezas')}</b>
-        <span>${esc(rest.slice(0, 3).map(ad => ad.name).join(', '))}${rest.length > 3 ? ` y ${rest.length - 3} más` : ''} · ${num(rest.reduce((total, ad) => total + ad.result, 0))} ${esc(section.many)} con ${money(rest.reduce((total, ad) => total + ad.spend, 0))} de inversión.</span>
+        <span>${esc(rest.slice(0, 3).map(ad => ad.label || ad.name).join(', '))}${rest.length > 3 ? ` y ${rest.length - 3} más` : ''} · ${num(rest.reduce((total, ad) => total + ad.result, 0))} ${esc(section.many)} con ${money(rest.reduce((total, ad) => total + ad.spend, 0))} de inversión.</span>
       </div>` : '';
     return `
       <div class="rp-best">
@@ -627,7 +635,7 @@
     }
     if (section.key === 'reconocimiento') {
       const rows = section.ads.slice(0, 3).map((ad, index) => ({
-        label: ad.name, value: ad.reach, inside: '', right: `${compact(ad.reach)} · ${num(ad.clicks)} clics`, color: index === 0 ? AMBER : '',
+        label: ad.label || ad.name, value: ad.reach, inside: '', right: `${compact(ad.reach)} · ${num(ad.clicks)} clics`, color: index === 0 ? AMBER : '',
       }));
       return panel('eye', 'Alcance por pieza', 'Personas alcanzadas y clics', bars(rows));
     }
@@ -635,7 +643,7 @@
     const shown = section.ads.length > 3 ? section.ads.slice(0, 2) : section.ads.slice(0, 3);
     const others = section.ads.slice(shown.length);
     const rows = shown.map((ad, index) => ({
-      label: ad.name, value: ad.result, inside: '', right: `${num(ad.result)} · ${cost(ad.cost)}`, color: index === 0 ? BLUE : '',
+      label: ad.label || ad.name, value: ad.result, inside: '', right: `${num(ad.result)} · ${cost(ad.cost)}`, color: index === 0 ? BLUE : '',
     }));
     if (others.length) {
       const result = others.reduce((total, ad) => total + ad.result, 0);
