@@ -6,3 +6,5 @@ credentials/
 *.local
 .DS_Store
 .claude/
+
+scripts/__pycache__/

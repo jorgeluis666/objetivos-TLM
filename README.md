@@ -133,11 +133,19 @@ sexo y anuncio; importes en PEN).
 
 ### La tabla de anuncios (desde la v1.7.0)
 
-Cada mes lleva ademas `ads`: una fila por anuncio con el detalle que usa el modulo Anuncios. Van en
-columnas, con el orden en `adColumns` de la raiz, porque son todos los anuncios de los doce meses y con
-las claves repetidas el archivo pesaria el doble; aun asi el JSON pasa de 65 KB a unos 170 KB. El "tipo
-de resultado" de cada anuncio es el que mas resultados le trae: la exportacion mezcla varios en la misma
-columna y una pieza puede cambiar de objetivo a mitad de mes. "Dias" cuenta solo los dias con inversion.
+Cada mes lleva ademas `ads`: **una fila por anuncio y conjunto** con el detalle que usa el modulo
+Anuncios. Van en columnas, con el orden en `adColumns` de la raiz, porque son todos los anuncios de los
+doce meses y con las claves repetidas el archivo pesaria el doble; aun asi el JSON pasa de 65 KB a unos
+170 KB. El "tipo de resultado" de cada anuncio es el que mas resultados le trae: la exportacion mezcla
+varios en la misma columna y una pieza puede cambiar de objetivo a mitad de mes. "Dias" cuenta solo los
+dias con inversion.
+
+La fila es el anuncio **dentro de su conjunto**, no el anuncio solo (desde la v1.11.1). Una misma pieza
+puede correr en dos conjuntos con publicos distintos —en Mensajes, el de WhatsApp general y el del radio
+de 3 km alrededor de la tienda; en Ventas, remarketing y publico amplio— y sus numeros no son del mismo
+publico. Antes se sumaba todo en una fila y se le ponia el conjunto donde mas se habia gastado, asi que
+el reporte repartia mal lo que venia de cada publico: en octubre de 2026 daba 127 y 37 conversaciones
+donde la plataforma dice 134 y 31, y ponia las 6 compras del mes en el conjunto de remarketing.
 
 ### La pestana "Nexus Meta" (desde la v1.6.0)
 
@@ -242,6 +250,15 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
     el navegador (`tlm-report-notes-v2`). "Restaurar textos" vuelve a los propuestos.
   - "Descargar PDF" abre la impresion del navegador (una lamina por pagina, 1280x720) con el nombre
     `The-Little-Market-Reporte-Meta-Ads-<Mes>-<Ano>`.
+  - **El total no cuadra al centimo con Ads Manager.** La exportacion de Drive viene desglosada por dia,
+    edad y sexo, y Meta deja fuera de ese desglose una parte del gasto: en octubre de 2026 la hoja suma
+    S/ 1,115.25 y la plataforma S/ 1,120.56 (−0.47 %), y 164 conversaciones frente a 165. El desvio es
+    proporcional en las tres campanas. Los numeros exactos **ya llegan a Drive**: la pestana "Nexus Meta"
+    de la carpeta que llena Nexus trae las filas de la API (campana, conjunto y anuncio por dia) y suma
+    exactamente lo que dice la plataforma. Hoy `build-ads-data.py` solo las usa para los dias que la
+    exportacion todavia no cubre, asi que en un mes ya exportado se descartan. Para que el tablero cuadre
+    al centimo habria que darles prioridad; falta que Nexus mande tambien el embudo y el alcance
+    (`extended_fields` en el destino de la marca), que el contrato trae pero esta cuenta no esta enviando.
   - El alcance es la **suma de las filas diarias**, no el alcance sin duplicar de Meta: las tarjetas lo dicen
     ("Suma diaria") y por eso la frecuencia que sale de ahi es menor que la de la plataforma. Para publicarlo
     como personas unicas haria falta traer el alcance del mes desde Meta, que la exportacion por dia no trae.

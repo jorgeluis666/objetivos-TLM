@@ -267,7 +267,12 @@ def top_ads(rows, group):
 
 
 def ads_table(rows):
-    """Una fila por anuncio del mes, de mas a menos inversion, para el modulo Anuncios.
+    """Una fila por anuncio y conjunto del mes, de mas a menos inversion, para el modulo Anuncios.
+
+    La fila es el anuncio dentro de su conjunto, no el anuncio solo: una misma pieza puede correr en dos
+    conjuntos con publicos distintos (en Mensajes, el de WhatsApp general y el del radio de 3 km alrededor
+    de la tienda) y sus numeros no son del mismo publico. Antes se sumaba todo en una fila y se le ponia
+    el conjunto donde mas se gasto, asi que el reporte repartia mal las conversaciones entre los dos.
 
     El tipo de resultado es el que mas resultados le trae al anuncio: la exportacion mezcla varios en la
     misma columna (ThruPlay, compras, conversaciones, visitas al perfil) y un anuncio puede cambiar de
@@ -275,18 +280,15 @@ def ads_table(rows):
     ads = {}
     for row in rows:
         name = str(row.get('ad') or '').strip() or '(sin nombre)'
-        ad = ads.setdefault((name, row['campaign']),
-                            {'name': name, 'campaign': row['campaign'], 'objective': '', 'sets': {},
+        adset = str(row.get('adSet') or '').strip()
+        ad = ads.setdefault((name, row['campaign'], adset),
+                            {'name': name, 'campaign': row['campaign'], 'adSet': adset, 'objective': '',
                              'kinds': {}, 'days': set(), 'url': None, **zero()})
         add(ad, row)
-        spend = num(row.get('spend'))
-        if spend > 0:
+        if num(row.get('spend')) > 0:
             ad['days'].add(row['day'])
         if not ad['objective'] and row.get('objective'):
             ad['objective'] = str(row['objective']).strip()
-        adset = str(row.get('adSet') or '').strip()
-        if adset:
-            ad['sets'][adset] = ad['sets'].get(adset, 0) + spend
         kind = str(row.get('resultType') or '').strip()
         if kind:
             ad['kinds'][kind] = ad['kinds'].get(kind, 0) + num(row.get('results'))
@@ -298,9 +300,8 @@ def ads_table(rows):
         if ad['spend'] <= 0 and ad['impressions'] <= 0:
             continue
         kind, results = max(ad['kinds'].items(), key=lambda item: item[1], default=('', 0))
-        adset = max(ad['sets'].items(), key=lambda item: item[1], default=('', 0))[0]
         values = rounded(ad, AD_TABLE_METRICS)
-        table.append([ad['name'], ad['campaign'], adset, group_of(ad['campaign'], ad['objective']),
+        table.append([ad['name'], ad['campaign'], ad['adSet'], group_of(ad['campaign'], ad['objective']),
                       kind, int(round(results)), len(ad['days']), ad['url'] or '']
                      + [values[key] for key in AD_TABLE_METRICS])
     return sorted(table, key=lambda row: -row[AD_TABLE_COLUMNS.index('spend')])

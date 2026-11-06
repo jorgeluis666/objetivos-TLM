@@ -1,9 +1,12 @@
 /**
  * anuncios.js - Modulo Anuncios: Meta Ads anuncio por anuncio.
  *
- * Toma la tabla months[].ads que arma scripts/build-ads-data.py (una fila por anuncio del mes, en
- * columnas para que el archivo no pese el doble) y la pinta con el mes que este elegido en Gasto
+ * Toma la tabla months[].ads que arma scripts/build-ads-data.py (una fila por anuncio y conjunto del
+ * mes, en columnas para que el archivo no pese el doble) y la pinta con el mes que este elegido en Gasto
  * publicitario: los dos modulos comparten el mes, asi que cambiarlo en uno repinta el otro.
+ *
+ * Una misma pieza puede correr en dos conjuntos con publicos distintos y entonces lleva una fila por
+ * conjunto, con sus propias cifras: sumarlas en una sola escondia de que publico venia cada resultado.
  *
  * El "resultado" de un anuncio no es el mismo en toda la cuenta: una pieza de Ventas resuelve compras,
  * una de Mensajes conversaciones o visitas al perfil, y una de Reconocimiento ThruPlays. Por eso la
@@ -44,7 +47,7 @@
   function toAd(row) {
     const ad = {};
     state.cols.forEach((name, index) => { ad[name] = row[index]; });
-    ad.key = `${ad.name}|${ad.campaign}`;
+    ad.key = `${ad.name}|${ad.campaign}|${ad.adSet || ''}`;
     ad.costPerResult = ad.results > 0 ? ad.spend / ad.results : null;
     ad.cpm = ad.impressions > 0 ? ad.spend / ad.impressions * 1000 : null;
     ad.roas = ad.spend > 0 && ad.revenue > 0 ? ad.revenue / ad.spend : null;
