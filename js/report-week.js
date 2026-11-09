@@ -406,7 +406,9 @@
       const otra = report.sections.find(other => other.key === (section.key === 'whatsapp' ? 'tienda' : 'whatsapp'));
       const lines = [`**Qué pasó: ${num(results)} ${results === 1 ? 'conversación' : 'conversaciones'}** por ${money(cur.spend)} a ${cost(unit)} c/u${section.key === 'tienda' ? ', con segmentación local: radio de 3 km alrededor de la tienda' : ''}.`];
       if (section.key === 'tienda') {
-        lines.push(`**Por qué cuesta más:** el público local es pequeño, por eso la frecuencia sube (${ratio2(cur.frequency)})${otra ? ` y el costo por conversación es mayor que en WhatsApp general (${cost(otra.cost)})` : ''}. Es el precio de apuntar solo a la zona cercana.`);
+        // La misma frecuencia que muestra el KPI de la lamina: si aqui se usa la de la suma diaria, el
+        // texto y la tarjeta se contradicen en la misma pagina en cuanto hay alcance sin duplicar.
+        lines.push(`**Por qué cuesta más:** el público local es pequeño, por eso la frecuencia sube (${ratio2(frequencyOf(section))})${otra ? ` y el costo por conversación es mayor que en WhatsApp general (${cost(otra.cost)})` : ''}. Es el precio de apuntar solo a la zona cercana.`);
         lines.push('**Qué aporta:** acerca clientes del barrio a la **tienda física** y da a conocer el local.');
       } else {
         lines.push(`**Por qué el costo es bajo:** el público general es amplio y la llamada directa a WhatsApp convierte sin fricción.${best && best.result ? ` "${best.name}" trajo ${num(best.result)} de las ${num(results)} conversaciones a ${cost(best.cost)}.` : ''}`);
