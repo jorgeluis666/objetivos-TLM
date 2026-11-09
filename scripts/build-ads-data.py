@@ -45,6 +45,7 @@ META_DIR = 'Meta files - The Little Market'
 OUT = os.path.join(ROOT, 'data', 'tlm-ads-2026.json')
 # Filas por dia para el Generador de reporte semanal (Archivo de Reportes): las ultimas semanas, no todo el ano.
 DAILY_OUT = os.path.join(ROOT, 'data', 'tlm-ads-daily.json')
+REPORT_OUT = os.path.join(ROOT, 'data', 'tlm-report-2026.json')
 DAILY_WEEKS = 15
 DAILY_FIELDS = ['spend', 'impressions', 'reach', 'clicks', 'landingViews', 'addToCart', 'checkouts', 'purchases', 'revenue',
                 'conversations', 'thruplays', 'profileVisits']
@@ -547,7 +548,24 @@ def daily_table(rows, cutoff):
     }
 
 
-def build(drive):
+def report_end(year, month, last, today):
+    """Meses anteriores completos; mes actual hasta el ultimo domingo terminado."""
+    if (year, month) < (today.year, today.month):
+        return None
+    end = min(last, today - timedelta(days=1))
+    end -= timedelta(days=(end.weekday() + 1) % 7)
+    return end
+
+
+def report_rows(rows, end):
+    if end is None:
+        return rows
+    # El alcance mensual sin duplicar incluye dias posteriores: no se puede recortar sumando.
+    clipped = any(row['day'] > end for row in rows)
+    return [row for row in rows if row['day'] <= end and not (clipped and row.get('only') == 'month')]
+
+
+def build(drive, weekly_report=False):
     folder = os.path.join(drive, META_DIR)
     if not os.path.isdir(folder):
         sys.exit(f'No existe la carpeta {folder}')
@@ -580,6 +598,12 @@ def build(drive):
                                  f'(sus fechas van del {short(days[0])} al {short(days[-1])}). Revisa que no sea una copia de otro mes.')
             entry['notice'] = 'La hoja no trae dias de este mes'
             continue
+        end = None
+        if weekly_report and inside:
+            end = report_end(YEAR, index + 1, max(row['day'] for row in inside), lima_today())
+            inside = report_rows(inside, end)
+            if end and (end.year, end.month) != (YEAR, index + 1):
+                continue
         all_rows.extend(inside)
         # Las cifras del mes salen de las filas que mandan; las de la exportacion de un dia que ya trae la
         # API quedan solo para el desglose por edad y sexo.
@@ -620,6 +644,9 @@ def build(drive):
             by_group[campaign['group']] = round(by_group.get(campaign['group'], 0) + campaign['spend'], 2)
         entry.update({'firstDay': days[0].isoformat(), 'lastDay': days[-1].isoformat(), 'kpis': rounded(totals),
                       'spendByGroup': by_group, 'campaigns': campaigns, 'ads': ads_table(main)})
+        if end:
+            entry['firstDay'] = date(YEAR, index + 1, 1).isoformat()
+            entry['lastDay'] = end.isoformat()
 
     with_data = [i for i, month in enumerate(months) if month['kpis']]
     cutoff = None
@@ -666,6 +693,10 @@ def main():
     if not os.path.isdir(args.root):
         sys.exit(f'No existe la carpeta {args.root}')
     rows, data = build(args.root)
+    _, report = build(args.root, weekly_report=True)
+    with open(REPORT_OUT, 'w', encoding='utf-8', newline='\n') as handle:
+        json.dump(report, handle, ensure_ascii=False, indent=1)
+        handle.write('\n')
     with open(OUT, 'w', encoding='utf-8', newline='\n') as handle:
         json.dump(data, handle, ensure_ascii=False, indent=1)
         handle.write('\n')

@@ -45,7 +45,7 @@ jobs:
           git config user.email "tlm-sync@users.noreply.github.com"
           # syncedAt cambia en cada corrida y es lo que el boton del tablero espera para saber que termino:
           # a pedido se publica siempre. Las corridas automaticas solo publican si cambio algo mas.
-          DATA="data/tlm-ads-2026.json data/tlm-ads-daily.json data/tlm-drive-reports.json"
+          DATA="data/tlm-ads-2026.json data/tlm-report-2026.json data/tlm-ads-daily.json data/tlm-drive-reports.json"
           if [ "$GITHUB_EVENT_NAME" = "schedule" ] && git diff --quiet -I '"(syncedAt|generatedAt)"' -- $DATA; then
             echo "Sin cambios en los datos."
             exit 0

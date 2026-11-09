@@ -7,7 +7,7 @@
   //
   // No trae datos nuevos: sale de data/tlm-ads-2026.json (scripts/build-ads-data.py), el mismo barrido de
   // Meta Ads que alimenta el resto del tablero, con una fila por anuncio del mes y su conjunto. El reporte
-  // es mensual, como el modelo: se elige el mes arriba y el periodo va del dia 1 al ultimo dia con datos.
+  // acumula del dia 1 al ultimo domingo cerrado; el generador filtra los datos diarios antes de sumar.
   //
   // Las dos campañas de mensajes van en laminas distintas porque no son lo mismo: el conjunto de WhatsApp
   // general apunta a publico amplio y el de tienda solo al radio de 3 km alrededor del local, asi que sus
@@ -19,7 +19,7 @@
   // dialogo de impresion del navegador.
   //
   // Expone window.TLMReportWeek = { init }.
-  const DATA_URL = 'data/tlm-ads-2026.json';
+  const DATA_URL = 'data/tlm-report-2026.json';
   const NOTES_KEY = 'tlm-report-notes-v2';
   const BRAND = 'The Little Market';
   const SLUG = 'The-Little-Market';
@@ -331,7 +331,7 @@
         monthName,
         source: `Fuente: ${CHANNEL} · ${first} – ${last} ${shortMonth} ${month.year}`,
         footer: `${BRAND} · Reporte ${CHANNEL} · ${cap(monthName)} ${month.year}`,
-        file: `${SLUG}-Reporte-${CHANNEL.replace(/\s+/g, '-')}-${cap(monthName)}-${month.year}`,
+        file: `${SLUG}-Reporte-${CHANNEL.replace(/\s+/g, '-')}-${cap(monthName)}-${month.year}${month.closed ? '' : `_${first}-${last}`}`,
         period: `${first} – ${last} de ${monthName} de ${month.year}${first === 1 && month.closed ? ' (mes completo)' : ''}`,
       },
     };

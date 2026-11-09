@@ -65,7 +65,7 @@ function main() {
   fs.rmSync(DIST_DIR, { recursive: true, force: true });
   fs.mkdirSync(path.join(DIST_DIR, 'data'), { recursive: true });
   fs.writeFileSync(DIST_HTML, html, 'utf8');
-  for (const file of ['tlm-ads-2026.json', 'tlm-ads-daily.json', 'tlm-bitacora-2026.json', 'tlm-drive-reports.json']) {
+  for (const file of ['tlm-ads-2026.json', 'tlm-report-2026.json', 'tlm-ads-daily.json', 'tlm-bitacora-2026.json', 'tlm-drive-reports.json']) {
     fs.copyFileSync(path.join(ROOT, 'data', file), path.join(DIST_DIR, 'data', file));
   }
 
