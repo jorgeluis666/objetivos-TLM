@@ -65,6 +65,10 @@ COLUMNS = {
     'nombre del conjunto de anuncios': 'adSet',
 }
 NEXUS_MARK = 'NEXUS_META_V1'
+# El mes entero en una fila por entidad: de ahi sale el alcance sin duplicar, que no se puede sumar de
+# los dias. Su "dia" es el primero del periodo, no un dia con entrega.
+MONTH_LEVELS = ('month_campaign', 'month_adset', 'month_ad')
+NEXUS_LEVELS = ('ad', 'segment') + MONTH_LEVELS
 # Cabecera de la pestana que escribe Nexus -> clave interna. Las cinco ultimas solo llegan si su destino
 # tiene activado "extended_fields"; sin ellas no hay alcance ni ThruPlays de esos dias.
 NEXUS_COLUMNS = {
@@ -264,11 +268,34 @@ def month_rows(paths):
 # Un dia que la API ya trae se cuenta con sus filas; las de la exportacion de ese dia solo sirven para el
 # desglose por edad y sexo, que la API no manda.
 def for_totals(row):
-    return row.get('only') != 'segment'
+    return row.get('only') not in ('segment', 'month')
 
 
 def for_segments(row):
-    return row.get('only') != 'totals'
+    return row.get('only') not in ('totals', 'month')
+
+
+def unique_reach(rows):
+    """El alcance sin duplicar del mes, por campaña, conjunto y anuncio.
+
+    Lo mandan las filas `month_*` de Nexus, una por entidad. No se suma: el alcance de dos conjuntos no
+    es el de su campaña, porque hay personas en los dos. Por eso cada lamina del reporte busca la entidad
+    que le corresponde y, si no esta, se queda con la suma de los dias y lo dice."""
+    found = {'campaigns': {}, 'sets': {}, 'ads': {}}
+    where = {'month_campaign': 'campaigns', 'month_adset': 'sets', 'month_ad': 'ads'}
+    for row in rows:
+        slot = where.get(row.get('level'))
+        reach = num(row.get('reach'))
+        if not slot or reach <= 0:
+            continue
+        name = str(row.get('ad') or '').strip()
+        key = [row['campaign']]
+        if slot != 'campaigns':
+            key.append(str(row.get('adSet') or '').strip())
+        if slot == 'ads':
+            key.append(name)
+        found[slot]['|'.join(key)] = {'reach': int(round(reach)), 'impressions': int(round(num(row.get('impressions'))))}
+    return {key: value for key, value in found.items() if value}
 
 
 def export_rows(book, path):
@@ -317,8 +344,9 @@ def nexus_rows(book):
     `segment` es la campana desglosada por edad y sexo: el mismo gasto repartido, asi que solo alimenta
     el desglose y nunca los totales.
 
-    Los demas niveles de la pestana se descartan aqui: `campaign` y `adset` son el mismo gasto contado
-    otra vez, y `month_*` (el mes entero por entidad, con el alcance sin duplicar) todavia no se usa."""
+    `month_campaign`, `month_adset` y `month_ad` son el mes entero en una fila por entidad: de ahi sale el
+    alcance sin duplicar, que no se puede sumar de los dias. No entran ni en los totales ni en el
+    desglose. `campaign` y `adset` si se descartan: son el mismo gasto diario contado otra vez."""
     sheet = nexus_sheet(book)
     if sheet is None:
         return []
@@ -332,10 +360,14 @@ def nexus_rows(book):
         row['day'] = to_date(row.get('day'))
         row['campaign'] = str(row.get('campaign') or '').strip()
         level = norm(row.pop('level', ''))
-        if level not in ('ad', 'segment') or not row['day'] or not row['campaign']:
+        if level not in NEXUS_LEVELS or not row['day'] or not row['campaign']:
             continue
         row['level'], row['nexus'] = level, True
-        if level == 'segment':
+        if level in MONTH_LEVELS:
+            # El mes entero: ni totales ni desglose, solo el alcance sin duplicar.
+            row['only'] = 'month'
+            row['age'], row['sex'] = 'Unknown', 'unknown'
+        elif level == 'segment':
             row['age'] = str(row.get('age') or '').strip() or 'Unknown'
             row['sex'] = str(row.get('sex') or '').strip() or 'unknown'
             row['ad'] = ''
@@ -572,6 +604,9 @@ def build(drive):
                 missing.insert(0, 'alcance')
             entry['nexus'] = {'from': nexus_days[0].isoformat(), 'to': nexus_days[-1].isoformat(),
                               'days': len(nexus_days), 'missing': missing}
+        unique = unique_reach([row for row in inside if row.get('only') == 'month'])
+        if unique:
+            entry['unique'] = unique
         totals = zero()
         for row in main:
             add(totals, row)

@@ -133,6 +133,9 @@
         // Lo que ese mes no trajo la exportacion de Drive: la API de Meta manda la inversion y los
         // resultados, pero no el embudo, el desglose por edad y sexo ni el enlace de vista previa.
         missing: (month.nexus && month.nexus.missing) || [],
+        // El alcance sin duplicar del mes por campaña, conjunto y anuncio, cuando Nexus lo manda. No se
+        // suma: el alcance de dos conjuntos no es el de su campaña, porque hay personas en los dos.
+        unique: month.unique || {},
         campaigns: month.campaigns || [],
         ads,
       };
@@ -197,6 +200,27 @@
   }
   const resultOf = (stats, metric) => Number(stats[metric]) || 0;
 
+  // El alcance de una lamina: el del mes sin duplicar si Nexus lo manda para esa entidad, y si no, la
+  // suma de las filas diarias, que cuenta varias veces a la misma persona y por eso va rotulada.
+  function uniqueOf(month, ads, adName) {
+    const tables = month.unique || {};
+    const campaigns = [...new Set(ads.map(ad => ad.campaign))];
+    const sets = [...new Set(ads.map(ad => String(ad.adSet || '').trim()))];
+    if (campaigns.length !== 1) return null;
+    if (adName) return (tables.ads || {})[`${campaigns[0]}|${sets[0]}|${adName}`] || null;
+    if (sets.length === 1) {
+      const set = (tables.sets || {})[`${campaigns[0]}|${sets[0]}`];
+      if (set) return set;
+    }
+    return (tables.campaigns || {})[campaigns[0]] || null;
+  }
+  // Las tres cifras que cambian con el origen: cuántas personas, cómo se llaman y cuántas veces las vio.
+  const reachOf = x => (x.unique ? x.unique.reach : x.cur.reach);
+  const reachNote = x => (x.unique ? 'Personas únicas' : 'Suma diaria');
+  const frequencyOf = x => (x.unique ? divide(x.unique.impressions || x.cur.impressions, x.unique.reach) : x.cur.frequency);
+  const adReach = ad => (ad.unique ? ad.unique.reach : ad.reach);
+  const adFrequency = ad => (ad.unique ? divide(ad.unique.impressions || ad.impressions, ad.unique.reach) : ad.frequency);
+
   function adStats(ad, metric) {
     const result = resultOf(ad, metric);
     return {
@@ -220,6 +244,8 @@
       .sort((left, right) => right.result - left.result || right.spend - left.spend);
     // Una misma pieza puede correr en dos conjuntos de la misma lamina (el "40% OFF" en remarketing y en
     // publico amplio): entonces el nombre lleva su publico, como en el modelo, para no verse repetido.
+    // El alcance de la pieza se busca con su nombre de Meta, antes de que el de la lamina le añada su público.
+    ranked.forEach(ad => { ad.unique = uniqueOf(month, [ad], ad.name); });
     const veces = ranked.reduce((count, ad) => ({ ...count, [ad.name]: (count[ad.name] || 0) + 1 }), {});
     ranked.forEach(ad => {
       ad.label = veces[ad.name] > 1 ? `${ad.name} · ${audienceLabel(ad.adSet).split(' · ')[0]}` : ad.name;
@@ -234,6 +260,7 @@
       cost: divide(cur.spend, results),
       ads: ranked,
       sets: adSets(ads, spec.metric),
+      unique: uniqueOf(month, ads),
       share: divide(ranked[0] ? ranked[0].result : 0, results),
     };
   }
@@ -280,7 +307,8 @@
       const cur = sums(ads);
       if (!cur.spend) return null;
       const results = resultOf(cur, group.metric);
-      return { group, cur, results, cost: group.key === 'Reconocimiento' ? cur.cpm : divide(cur.spend, results), share: divide(cur.spend, totals.spend) };
+      const unique = uniqueOf(month, ads);
+      return { group, cur, results, unique, cost: group.key === 'Reconocimiento' ? cur.cpm : divide(cur.spend, results), share: divide(cur.spend, totals.spend) };
     }).filter(Boolean).sort((left, right) => right.cur.spend - left.cur.spend);
     const sections = SECTIONS.map(spec => buildSection(spec, month)).filter(Boolean);
     // Con una sola campaña de mensajes no hace falta distinguirla del publico local.
@@ -341,7 +369,7 @@
     const parts = [];
     if (top) parts.push(`**Qué pasó:** el presupuesto se concentró en ${top.group.lower} (${pct(top.share * 100)}), el canal con mejor costo por resultado`);
     if (ventas) parts.push(`las ventas web aportaron ${num(ventas.results)} ${ventas.results === 1 ? 'compra' : 'compras'} con ROAS ${ratio2(ventas.cur.roas)}`);
-    if (reco) parts.push(`el reconocimiento llevó la marca a ${thousands(reco.cur.reach)} personas a un CPM de ${money2(reco.cur.cpm)}`);
+    if (reco) parts.push(`el reconocimiento llevó la marca a ${thousands(reachOf(reco))} personas a un CPM de ${money2(reco.cur.cpm)}`);
     const action = top && top.group.key === 'Mensajes'
       ? ' **Acción:** sostener WhatsApp como motor de contacto y reforzar remarketing para convertir conversaciones en más ventas.'
       : ' **Acción:** sostener lo que mejor costo por resultado trae y reforzar remarketing para cerrar más ventas.';
@@ -388,8 +416,8 @@
     }
     if (section.key === 'reconocimiento') {
       const second = section.ads[1];
-      const lines = [`**Qué pasó: ${thousands(cur.reach)} personas** (${thousands(cur.impressions)} impresiones) a CPM ${money2(cur.cpm)} y frecuencia ${ratio2(cur.frequency)}.`];
-      lines.push(`**Por qué el CPM es tan bajo:** objetivo de alcance + público amplio + frecuencia controlada (${ratio2(cur.frequency)} veces por persona) = impresiones baratas sin saturar.`);
+      const lines = [`**Qué pasó: ${thousands(reachOf(section))} personas** (${thousands(cur.impressions)} impresiones) a CPM ${money2(cur.cpm)} y frecuencia ${ratio2(frequencyOf(section))}.`];
+      lines.push(`**Por qué el CPM es tan bajo:** objetivo de alcance + público amplio + frecuencia controlada (${ratio2(frequencyOf(section))} veces por persona) = impresiones baratas sin saturar.`);
       if (best && second && second.clicks > 0) lines.push(`**Qué pieza ganó: "${best.name}"** generó ${num(best.clicks)} clics frente a ${num(second.clicks)} de la siguiente. Este público alimenta el remarketing.`);
       else if (best) lines.push(`**Qué pieza ganó: "${best.name}"**, con ${compact(best.reach)} de alcance y ${num(best.clicks)} clics.`);
       return lines.join(' ');
@@ -446,7 +474,7 @@
     if (group.key === 'Reconocimiento') {
       return {
         title: 'Marca con alcance eficiente',
-        text: `${thousands(cur.reach)} personas a CPM ${money2(cur.cpm)}. Ese público nuevo alimenta las campañas de ventas y conversaciones del siguiente periodo.`,
+        text: `${thousands(reachOf(objective))} personas a CPM ${money2(cur.cpm)}. Ese público nuevo alimenta las campañas de ventas y conversaciones del siguiente periodo.`,
       };
     }
     return { title: group.label, text: `${num(results)} ${group.plural} por ${money(cur.spend)}.` };
@@ -577,8 +605,8 @@
     const title = { ventas: 'Mejores anuncios · por compras y ROAS', whatsapp: 'Mejor anuncio · por conversaciones', tienda: 'Mejores anuncios · por conversaciones', reconocimiento: 'Mejores anuncios · por alcance' }[section.key] || 'Mejores anuncios';
     const figures = ad => {
       if (section.key === 'ventas') return [['Inversión', money(ad.spend)], ['Compras', num(ad.result), true], ['ROAS', ratio2(ad.roas), true], ['CPA', cost(ad.cost)]];
-      if (section.key === 'reconocimiento') return [['Inversión', money(ad.spend)], ['Alcance', compact(ad.reach), true], ['Clics', num(ad.clicks)], ['Frecuencia', ratio2(ad.frequency)]];
-      return [['Inversión', money(ad.spend)], ['Conversac.', num(ad.result), true], ['Costo/conv.', cost(ad.cost)], ['Alcance', compact(ad.reach)]];
+      if (section.key === 'reconocimiento') return [['Inversión', money(ad.spend)], ['Alcance', compact(adReach(ad)), true], ['Clics', num(ad.clicks)], ['Frecuencia', ratio2(adFrequency(ad))]];
+      return [['Inversión', money(ad.spend)], ['Conversac.', num(ad.result), true], ['Costo/conv.', cost(ad.cost)], ['Alcance', compact(adReach(ad))]];
     };
     const card = (ad, index) => `
       <article class="rp-best-card${index === 0 ? ' best' : ''}">
@@ -634,15 +662,15 @@
     if (section.key === 'tienda') {
       const { cur } = section;
       const rows = [
-        { label: 'Alcance local', value: 1, inside: '', right: `${compact(cur.reach)} personas`, color: TEAL },
-        { label: 'Frecuencia', value: 0.62, inside: '', right: `${ratio2(cur.frequency)} veces`, color: '#0ea5e9' },
+        { label: 'Alcance local', value: 1, inside: '', right: `${compact(reachOf(section))} personas`, color: TEAL },
+        { label: 'Frecuencia', value: 0.62, inside: '', right: `${ratio2(frequencyOf(section))} veces`, color: '#0ea5e9' },
         { label: 'Clics al enlace', value: 0.45, inside: '', right: `${num(cur.clicks)} clics`, color: BLUE },
       ];
       return panel('pin', 'Contexto del público local', 'Radio de 3 km alrededor de la tienda', bars(rows));
     }
     if (section.key === 'reconocimiento') {
       const rows = section.ads.slice(0, 3).map((ad, index) => ({
-        label: ad.label || ad.name, value: ad.reach, inside: '', right: `${compact(ad.reach)} · ${num(ad.clicks)} clics`, color: index === 0 ? AMBER : '',
+        label: ad.label || ad.name, value: adReach(ad), inside: '', right: `${compact(adReach(ad))} · ${num(ad.clicks)} clics`, color: index === 0 ? AMBER : '',
       }));
       return panel('eye', 'Alcance por pieza', 'Personas alcanzadas y clics', bars(rows));
     }
@@ -711,11 +739,11 @@
       tiles.push(kpi('Compras web', num(ventas.results), `Atribución Meta · ROAS ${ratio2(ventas.cur.roas)}`));
       tiles.push(kpi('Valor compras', money(ventas.cur.revenue), 'Atribución Meta'));
     }
-    if (reco) tiles.push(kpi('Alcance recon.', thousands(reco.cur.reach), `suma diaria · CPM ${money2(reco.cur.cpm)}`));
+    if (reco) tiles.push(kpi('Alcance recon.', thousands(reachOf(reco)), `${reco.unique ? 'personas únicas' : 'suma diaria'} · CPM ${money2(reco.cur.cpm)}`));
     tiles.push(kpi('Clics al enlace', num(totals.clicks), 'Hacia WhatsApp y web'));
 
     const resultLabel = objective => {
-      if (objective.group.key === 'Reconocimiento') return `<b>${compact(objective.cur.reach)}</b> alcance`;
+      if (objective.group.key === 'Reconocimiento') return `<b>${compact(reachOf(objective))}</b> alcance`;
       return `<b>${num(objective.results)}</b> ${esc(objective.group.unit)}`;
     };
     const costLabel = objective => (objective.group.key === 'Reconocimiento' ? `${money2(objective.cur.cpm)} CPM` : cost(objective.cost));
@@ -761,7 +789,7 @@
     objectives.slice(1, 3).forEach(objective => tiles.push(kpi(objective.group.key, pct(objective.share * 100), objective.group.key === 'Reconocimiento' ? objective.group.role : 'del presupuesto')));
     const resultLabel = objective => {
       if (objective.group.key === 'Ventas') return `${num(objective.results)} compras · ${money(objective.cur.revenue)}`;
-      if (objective.group.key === 'Reconocimiento') return `${compact(objective.cur.reach)} alcance`;
+      if (objective.group.key === 'Reconocimiento') return `${compact(reachOf(objective))} alcance`;
       return `${num(objective.results)} ${objective.group.plural}`;
     };
     return `
@@ -812,9 +840,9 @@
     if (section.key === 'reconocimiento') {
       return [
         kpi('Inversión', money(cur.spend), 'Campaña de alcance'),
-        kpi('Alcance', thousands(cur.reach), 'Suma diaria de alcance'),
+        kpi('Alcance', thousands(reachOf(section)), section.unique ? 'Personas únicas' : 'Suma diaria de alcance'),
         kpi('Impresiones', thousands(cur.impressions), 'Veces mostrado'),
-        kpi('Frecuencia', ratio2(cur.frequency), 'Impresiones ÷ alcance'),
+        kpi('Frecuencia', ratio2(frequencyOf(section)), section.unique ? 'Veces por persona' : 'Impresiones ÷ alcance sumado'),
         kpi('CPM', money2(cur.cpm), 'Costo por mil impres.'),
       ].join('');
     }
@@ -823,7 +851,7 @@
       kpi('Inversión', money(cur.spend), local ? 'Mensajes a tienda' : 'Mensajes WhatsApp'),
       kpi('Conversaciones', num(results), local ? 'Público local · 3 km' : 'Iniciadas por WhatsApp'),
       kpi('Costo por conv.', cost(section.cost), 'Inversión ÷ conversaciones'),
-      kpi(local ? 'Alcance local' : 'Alcance', compact(cur.reach), `Suma diaria · frec. ${ratio2(cur.frequency)}`),
+      kpi(local ? 'Alcance local' : 'Alcance', compact(reachOf(section)), `${reachNote(section)} · frec. ${ratio2(frequencyOf(section))}`),
       kpi('Clics al enlace', num(cur.clicks), local ? 'Hacia WhatsApp' : 'Hacia WhatsApp y web'),
     ].join('');
   }

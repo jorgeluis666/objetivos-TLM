@@ -270,7 +270,12 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
   - Un mes que todavia solo tiene las filas de la API (el mes en curso, antes de que el equipo suba la
     exportacion) no trae el embudo: la lamina de ventas lo dice en vez de pintar tres ceros, que se
     leerian como que nadie agrego al carrito. Lo decide `nexus.missing` del mes, no los ceros.
-  - El alcance es la **suma de las filas diarias**, no el alcance sin duplicar de Meta: las tarjetas lo dicen
+  - **El alcance es el del mes sin duplicar** cuando Nexus manda sus filas `month_*` (una por campaña,
+    conjunto y anuncio): entonces la tarjeta dice "Personas únicas" y la frecuencia es la de verdad. No se
+    suma nunca —el alcance de dos conjuntos no es el de su campaña, porque hay personas en los dos—, asi
+    que cada lamina busca su entidad: las de mensajes su conjunto, ventas y reconocimiento su campaña. Si
+    esa entidad no esta, la lamina vuelve a la suma diaria y lo dice.
+  - Sin esas filas el alcance es la **suma de las filas diarias**, no el alcance sin duplicar: las tarjetas lo dicen
     ("Suma diaria") y por eso la frecuencia que sale de ahi es menor que la de la plataforma. Para publicarlo
     como personas unicas haria falta traer el alcance del mes desde Meta, que la exportacion por dia no trae.
   - La descarga de Meta no trae el formato de la pieza: una tarjeta de anuncio solo dice "Video" cuando hay
