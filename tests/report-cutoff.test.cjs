@@ -13,7 +13,9 @@ test('Report renders the November cutoff in selector, cover and PDF filename', a
   const button = { addEventListener() {} };
   const document = { title: 'TLM', getElementById: id => ({ 'week-report': host, 'week-select': select, 'week-print': button, 'week-reset': button }[id]) };
   let printedTitle;
-  const window = { addEventListener() {}, removeEventListener() {}, print() { printedTitle = document.title; }, setTimeout() {} };
+  const events = {};
+  let printCount = 0;
+  const window = { addEventListener(name, handler) { events[name] = handler; }, removeEventListener() {}, print() { printedTitle = document.title; printCount++; }, setTimeout() {} };
   const context = { window, document, console, Intl, Date, fetch: async url => {
     assert.match(url, /tlm-report-2026.json/);
     return { ok: true, json: async () => data };
@@ -26,5 +28,13 @@ test('Report renders the November cutoff in selector, cover and PDF filename', a
   assert.match(host.innerHTML, /Periodo 1 – 8 nov/);
   assert.doesNotMatch(host.innerHTML, /NaN|undefined|No se pudieron cargar/);
   window.TLMReportWeek.printReport();
+  assert.match(printedTitle, /Noviembre-2026_1-8$/);
+  events.afterprint();
+  assert.equal(document.title, 'TLM');
+  const rendered = host.innerHTML;
+  events['tlm:data-updated']();
+  window.TLMReportWeek.printReport();
+  assert.equal(printCount, 2, 'The visible report still prints after background synchronization');
+  assert.equal(host.innerHTML, rendered, 'Printing preserves the reviewed report');
   assert.match(printedTitle, /Noviembre-2026_1-8$/);
 });

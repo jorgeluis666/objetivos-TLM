@@ -62,6 +62,7 @@
   let data = null;
   let loading = null;
   let selected = '';
+  let renderedFile = '';
   let wired = false;
   let resizeObserver = null;
 
@@ -949,6 +950,7 @@
     if (!host || !data) return;
     const months = data.months;
     if (!months.length) {
+      renderedFile = '';
       if (select) select.innerHTML = '<option value="">Sin meses con datos</option>';
       host.innerHTML = '<div class="panel"><div class="empty-state"><strong>Todavía no hay datos para el reporte</strong><span>El reporte se arma con las descargas de Meta Ads de la carpeta de Drive. En cuanto haya un mes con entregas, aparece aquí.</span></div></div>';
       return;
@@ -964,6 +966,7 @@
     }
 
     const report = buildReport(month);
+    renderedFile = report.labels.file;
     const notes = readNotes()[month.id] || {};
     const pages = { summary: 3, distribution: 4, firstSection: 5, conclusions: 5 + report.sections.length };
     const total = pages.conclusions + 1;
@@ -992,12 +995,12 @@
 
   // El nombre del PDF lo pone el navegador con el titulo del documento: se cambia solo mientras imprime.
   function printReport() {
-    if (!selected || !data) return;
-    const month = data.months.find(item => item.id === selected);
-    if (!month) return;
+    // Imprimir la vista ya generada aunque una sincronizacion invalide la cache.
+    // La proxima apertura recargara los datos; el PDF conserva lo que se ve ahora.
+    if (!renderedFile) return;
     document.activeElement?.blur?.();
     const title = document.title;
-    document.title = buildReport(month).labels.file;
+    document.title = renderedFile;
     const restore = () => { document.title = title; global.removeEventListener('afterprint', restore); };
     global.addEventListener('afterprint', restore);
     global.print();
@@ -1022,6 +1025,7 @@
     }
     renderModel();
     if (data) { render(); return; }
+    renderedFile = '';
     if (host) host.innerHTML = '<div class="panel"><div class="week-empty">Cargando los datos del mes...</div></div>';
     try {
       await load();
