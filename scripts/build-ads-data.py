@@ -73,7 +73,7 @@ NEXUS_COLUMNS = {
     'purchase_value': 'revenue', 'messages': 'conversations',
     'reach': 'reach', 'objective': 'objective', 'result_type': 'resultType', 'results': 'results',
     'landing_page_views': 'landingViews', 'add_to_cart': 'addToCart', 'checkouts': 'checkouts',
-    'age': 'age', 'gender': 'sex',
+    'age': 'age', 'gender': 'sex', 'preview': 'preview',
 }
 # El embudo: si el destino no lo manda, el tablero lo avisa en vez de contarlo como cero.
 FUNNEL = ('landingViews', 'addToCart', 'checkouts')
@@ -315,7 +315,10 @@ def nexus_rows(book):
     Se quedan dos niveles. `ad` trae las cifras del mes y manda sobre la exportacion del mismo dia (lo
     decide month_rows); su edad y su sexo van como "Unknown", la etiqueta de Meta para lo que no sabe.
     `segment` es la campana desglosada por edad y sexo: el mismo gasto repartido, asi que solo alimenta
-    el desglose y nunca los totales."""
+    el desglose y nunca los totales.
+
+    Los demas niveles de la pestana se descartan aqui: `campaign` y `adset` son el mismo gasto contado
+    otra vez, y `month_*` (el mes entero por entidad, con el alcance sin duplicar) todavia no se usa."""
     sheet = nexus_sheet(book)
     if sheet is None:
         return []
