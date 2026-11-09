@@ -126,7 +126,7 @@
         index,
         name: month.name,
         year: json.year,
-        firstDay: month.firstDay,
+        firstDay: `${json.year}-${String(index + 1).padStart(2, '0')}-01`,
         lastDay: month.lastDay,
         closed: month.status === 'cerrado',
         kpis: month.kpis,

@@ -1,0 +1,10 @@
+{
+  "kind": "tlm",
+  "data": "TLMReportWeek",
+  "module": "TLMReportWeek",
+  "brand": "the-little-market",
+  "periodSource": "data/tlm-ads-2026.json",
+  "snapshotFiles": [
+    "data/tlm-ads-2026.json"
+  ]
+}
