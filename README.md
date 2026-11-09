@@ -159,15 +159,17 @@ desglosada por dia, edad y sexo, y Meta deja fuera de ese desglose medio punto p
 octubre de 2026 la hoja sumaba S/ 1,115.25 y 164 conversaciones donde la plataforma dice S/ 1,120.56 y
 165; el desvio era proporcional en las tres campanas. Con las filas de la API el mes cuadra al centimo.
 
-De esa pestana se usan unicamente las filas de nivel `ad`: los niveles (`campaign`, `adset`, `ad`) son el
-mismo gasto contado tres veces y sumarlos lo triplicaria. El contrato trae menos columnas que la
-exportacion, asi que de la exportacion del mismo dia se siguen tomando dos cosas, pegadas a la fila de la
-API por dia, campana, conjunto y anuncio: **el embudo (visitas a la web, carrito, pagos iniciados) y el
-enlace de vista previa**. El **desglose por edad y sexo** tambien sale de la exportacion, pero aparte: sus
-filas no entran en los totales, solo en el bloque `segments`, asi que la suma de los segmentos se queda
-en lo que Meta desglosa y puede no cuadrar con el total del mes. Un dia que la exportacion no cubre va
-solo con lo que manda la API: sin embudo, sin enlace y con edad y sexo en `Unknown`; el alcance y los
-ThruPlays llegan si el destino de esa cuenta en Nexus tiene activado `extended_fields`.
+De los niveles `campaign`, `adset` y `ad` se usa **solo `ad`**: son el mismo gasto contado tres veces y
+sumarlos lo triplicaria. Hay ademas un cuarto nivel, **`segment`**: las campanas desglosadas por edad y
+sexo, que alimentan el bloque `segments` y nunca los totales (tambien es el mismo gasto, repartido).
+
+El **desglose por edad y sexo** sale de esas filas `segment` cuando Nexus las manda y, si no, de la
+exportacion de ese dia; nunca de las dos a la vez. Del **embudo** (visitas a la web, carrito, pagos
+iniciados) y del **enlace de vista previa** manda la API, y lo que no traiga se completa con la
+exportacion del mismo dia, pegado a la fila de la API por dia, campana, conjunto y anuncio. La suma de
+los segmentos puede no cuadrar con el total del mes cuando sale de la exportacion, porque ahi Meta no
+desglosa todo el gasto. Un dia sin exportacion va solo con lo que manda la API; el embudo, el alcance,
+los ThruPlays y el desglose llegan si el destino de esa cuenta en Nexus tiene `extended_fields`.
 
 Las dos carpetas de Meta tienen la hoja del mismo mes con el mismo nombre. `drive-download.py` ya no
 descarta la segunda por repetida: la guarda con sufijo (`... (2).xlsx`) y `build-ads-data.py` lee todas

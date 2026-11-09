@@ -73,6 +73,7 @@ NEXUS_COLUMNS = {
     'purchase_value': 'revenue', 'messages': 'conversations',
     'reach': 'reach', 'objective': 'objective', 'result_type': 'resultType', 'results': 'results',
     'landing_page_views': 'landingViews', 'add_to_cart': 'addToCart', 'checkouts': 'checkouts',
+    'age': 'age', 'gender': 'sex',
 }
 # El embudo: si el destino no lo manda, el tablero lo avisa en vez de contarlo como cero.
 FUNNEL = ('landingViews', 'addToCart', 'checkouts')
@@ -196,12 +197,14 @@ def ad_key(row):
 def month_rows(paths):
     """Las filas del mes con la API por delante.
 
-    Un dia que la pestana de Nexus trae se cuenta con sus filas, porque son las de la API y suman lo
-    mismo que dice Ads Manager; la exportacion de ese dia viene desglosada por dia, edad y sexo y Meta
-    deja fuera de ese desglose medio punto porcentual del gasto. De la exportacion se siguen tomando dos
-    cosas que el contrato de Nexus no manda: el embudo del dia (visitas a la web, carrito y pagos
-    iniciados) y el enlace de vista previa del anuncio, que se pegan a la fila de la API; y el desglose
-    por edad y sexo, que se arma solo con sus filas. Un dia que Nexus no trae se cuenta como siempre."""
+    Un dia que la pestana de Nexus trae se cuenta con sus filas de anuncio, porque son las de la API y
+    suman lo mismo que dice Ads Manager; la exportacion de ese dia viene desglosada por dia, edad y sexo
+    y Meta deja fuera de ese desglose medio punto porcentual del gasto.
+
+    El desglose por edad y sexo sale de las filas de nivel `segment` de la misma pestana, y si Nexus
+    todavia no las manda, de la exportacion de ese dia. Nunca de las dos a la vez: son el mismo gasto
+    repartido y se contaria doble. El embudo del dia y el enlace de vista previa se pegan a la fila de la
+    API desde la exportacion solo si la API no los trajo. Un dia que Nexus no trae se cuenta como siempre."""
     exported, nexus, errors = [], [], []
     for path in paths:
         try:
@@ -213,9 +216,13 @@ def month_rows(paths):
         nexus += from_nexus
     if errors and not exported and not nexus:
         raise errors[0]
-    nexus_days = {row['day'] for row in nexus}
+    main = [row for row in nexus if row.get('level') == 'ad']
+    segments = [row for row in nexus if row.get('level') == 'segment']
+    nexus_days = {row['day'] for row in main}
     if not nexus_days:
         return exported
+    segment_days = {row['day'] for row in segments}
+    export_days = {row['day'] for row in exported}
     extra = {}
     for row in exported:
         if row['day'] not in nexus_days:
@@ -226,24 +233,32 @@ def month_rows(paths):
         url = row.get('preview')
         if not slot.get('preview') and isinstance(url, str) and url.startswith('https://'):
             slot['preview'] = url
-    for row in nexus:
+    for row in main:
         slot = extra.get(ad_key(row))
         if not slot:
             continue
+        # Solo se rellena lo que la API no trajo: su cifra manda sobre la del desglose.
         for key in FUNNEL:
-            row[key] = slot[key]
-        if slot.get('preview'):
+            if not num(row.get(key)):
+                row[key] = slot[key]
+        if slot.get('preview') and not row.get('preview'):
             row['preview'] = slot['preview']
-    export_days = {row['day'] for row in exported}
+    rows = []
+    for row in main:
+        # Si el dia tiene de donde sacar el desglose, estas filas solo ponen las cifras.
+        if row['day'] in segment_days or row['day'] in export_days:
+            row['only'] = 'totals'
+        rows.append(row)
+    for row in segments:
+        row['only'] = 'segment'
+        rows.append(row)
     for row in exported:
-        # Un dia que ya trae la API solo aporta el desglose por edad y sexo.
+        if row['day'] in segment_days:
+            continue  # el desglose de ese dia ya viene de la API
         if row['day'] in nexus_days:
             row['only'] = 'segment'
-    for row in nexus:
-        # Y sus filas no entran al desglose, que ya ponen las de la exportacion.
-        if row['day'] in export_days:
-            row['only'] = 'totals'
-    return nexus + exported
+        rows.append(row)
+    return rows
 
 
 # Un dia que la API ya trae se cuenta con sus filas; las de la exportacion de ese dia solo sirven para el
@@ -295,10 +310,12 @@ def result_type_of(indicator):
 
 
 def nexus_rows(book):
-    """Filas de nivel anuncio de la pestana de Nexus: las de la API, un dia por fila.
+    """Filas de la pestana de Nexus: las de la API, un dia por fila.
 
-    Mandan sobre la exportacion del mismo dia (lo decide month_rows). Edad y sexo van como "Unknown", que
-    es la etiqueta de Meta para lo que no sabe, porque el contrato no trae el desglose."""
+    Se quedan dos niveles. `ad` trae las cifras del mes y manda sobre la exportacion del mismo dia (lo
+    decide month_rows); su edad y su sexo van como "Unknown", la etiqueta de Meta para lo que no sabe.
+    `segment` es la campana desglosada por edad y sexo: el mismo gasto repartido, asi que solo alimenta
+    el desglose y nunca los totales."""
     sheet = nexus_sheet(book)
     if sheet is None:
         return []
@@ -311,9 +328,16 @@ def nexus_rows(book):
         row = {key: value for key, value in zip(keys, values) if key}
         row['day'] = to_date(row.get('day'))
         row['campaign'] = str(row.get('campaign') or '').strip()
-        if norm(row.pop('level', '')) != 'ad' or not row['day'] or not row['campaign']:
+        level = norm(row.pop('level', ''))
+        if level not in ('ad', 'segment') or not row['day'] or not row['campaign']:
             continue
-        row['age'], row['sex'], row['nexus'] = 'Unknown', 'unknown', True
+        row['level'], row['nexus'] = level, True
+        if level == 'segment':
+            row['age'] = str(row.get('age') or '').strip() or 'Unknown'
+            row['sex'] = str(row.get('sex') or '').strip() or 'unknown'
+            row['ad'] = ''
+        else:
+            row['age'], row['sex'] = 'Unknown', 'unknown'
         row['resultType'] = result_type_of(row.get('resultType'))
         row['objective'] = NEXUS_OBJECTIVES.get(norm(row.get('objective')), '')
         records.append(row)
@@ -530,9 +554,12 @@ def build(drive):
             # previa se miran en los datos: el embudo y el enlace llegan de la exportacion del mismo dia
             # cuando la hay, y el alcance solo si el destino de Nexus lo manda.
             nexus_days = sorted({row['day'] for row in from_nexus})
-            con_export = {row['day'] for row in inside if not row.get('nexus')}
+            # El desglose de un dia sale de las filas `segment` de la API o, si no las hay, de la
+            # exportacion; solo falta cuando no esta ninguno de los dos.
+            con_desglose = ({row['day'] for row in inside if not row.get('nexus')}
+                            | {row['day'] for row in inside if row.get('level') == 'segment'})
             missing = []
-            if any(day not in con_export for day in nexus_days):
+            if any(day not in con_desglose for day in nexus_days):
                 missing.append('desglose por edad')
             if not any(isinstance(row.get('preview'), str) for row in from_nexus):
                 missing.append('vista previa')
