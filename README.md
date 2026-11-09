@@ -265,6 +265,9 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
   - **Los numeros son los de la plataforma** (desde la v1.12.0): los dias que trae la pestana "Nexus Meta"
     se cuentan con las filas de la API y cuadran al centimo con Ads Manager. En octubre de 2026 el tablero
     daba S/ 1,115.25 y 164 conversaciones y ahora da S/ 1,120.56 y 165, que es lo que dice la plataforma.
+  - Un mes que todavia solo tiene las filas de la API (el mes en curso, antes de que el equipo suba la
+    exportacion) no trae el embudo: la lamina de ventas lo dice en vez de pintar tres ceros, que se
+    leerian como que nadie agrego al carrito. Lo decide `nexus.missing` del mes, no los ceros.
   - El alcance es la **suma de las filas diarias**, no el alcance sin duplicar de Meta: las tarjetas lo dicen
     ("Suma diaria") y por eso la frecuencia que sale de ahi es menor que la de la plataforma. Para publicarlo
     como personas unicas haria falta traer el alcance del mes desde Meta, que la exportacion por dia no trae.

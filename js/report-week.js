@@ -130,6 +130,9 @@
         lastDay: month.lastDay,
         closed: month.status === 'cerrado',
         kpis: month.kpis,
+        // Lo que ese mes no trajo la exportacion de Drive: la API de Meta manda la inversion y los
+        // resultados, pero no el embudo, el desglose por edad y sexo ni el enlace de vista previa.
+        missing: (month.nexus && month.nexus.missing) || [],
         campaigns: month.campaigns || [],
         ads,
       };
@@ -601,14 +604,18 @@
 
   // El panel derecho de cada lamina: el embudo y los publicos en ventas, el desglose por pieza en
   // mensajes, el contexto local en la campaña de tienda y el alcance por pieza en reconocimiento.
-  function sidePanel(section) {
+  function sidePanel(section, report) {
     if (section.key === 'ventas') {
       const { cur } = section;
-      const funnel = bars([
-        { label: 'Agregados al carrito', value: cur.addToCart, inside: num(cur.addToCart), color: BLUE },
-        { label: 'Pagos iniciados', value: cur.checkouts, inside: num(cur.checkouts), color: '#0ea5e9' },
-        { label: 'Compras', value: cur.purchases, inside: num(cur.purchases), color: TEAL },
-      ]);
+      // Un mes que todavia solo tiene las filas de la API no trae el embudo: tres ceros se leerian como
+      // que nadie agrego al carrito, y lo que pasa es que el dato no esta. La lamina lo dice.
+      const funnel = report.month.missing.includes('embudo')
+        ? `<p class="rp-empty">El embudo llega con la exportación del mes. Las filas de la API traen la inversión, las compras y su valor, pero no las visitas a la web, los artículos agregados al carrito ni los pagos iniciados.</p>`
+        : bars([
+          { label: 'Agregados al carrito', value: cur.addToCart, inside: num(cur.addToCart), color: BLUE },
+          { label: 'Pagos iniciados', value: cur.checkouts, inside: num(cur.checkouts), color: '#0ea5e9' },
+          { label: 'Compras', value: cur.purchases, inside: num(cur.purchases), color: TEAL },
+        ]);
       const audiences = section.sets.slice(0, 2).map((set, index) => `
         <div class="rp-aud-card${index === 0 ? ' best' : ''}">
           <div class="rp-aud-head">
@@ -828,8 +835,8 @@
     // En ventas el panel de la derecha lleva el embudo y los publicos y ocupa toda la columna, como en el
     // modelo; en los demas objetivos comparte la columna con el destacado.
     const right = section.key === 'ventas'
-      ? sidePanel(section)
-      : `<div class="rp-pile">${sidePanel(section)}${insight('Destacado', destacadoKey, pick(notes, destacadoKey, suggestDestacado(section, report)))}</div>`;
+      ? sidePanel(section, report)
+      : `<div class="rp-pile">${sidePanel(section, report)}${insight('Destacado', destacadoKey, pick(notes, destacadoKey, suggestDestacado(section, report)))}</div>`;
     return `
       <section class="rp-page">
         ${head(section.title, pick(notes, subKey, section.sub), report.labels.chip)}
