@@ -7,7 +7,7 @@ name: Sincronizar datos de Meta Ads desde Drive
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 12,17,22 * * *' # 7:00 a. m., 12:00 m. y 5:00 p. m. hora de Lima
+    - cron: '30 11,18,23 * * *' # 06:30, 13:30 y 18:30 Lima, después de Nexus; GitHub puede retrasarlo.
 
 permissions:
   contents: write

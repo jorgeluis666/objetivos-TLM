@@ -32,7 +32,7 @@
   // vuelve a leer los datos publicados por la sincronizacion automatica.
   const SYNC_TRIGGER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyoEjOyQ8FfCZLnulkTVO8C2KURxLQfWFZwppLM-EMpcZsQNW0NvN4qq6MOKODxuXTMHA/exec';
   const SYNC_TRIGGER_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/exec$/;
-  const SYNC_SCHEDULE = 'automática 7:00 a. m., 12:00 m. y 5:00 p. m.';
+  const SYNC_SCHEDULE = 'Barrido de Drive: 06:30, 13:30 y 18:30 Lima (aprox.). Nexus: 06:00, 13:00 y 18:00. Publicación al terminar';
   const SYNC_POLL_MS = 15000;
   const SYNC_TIMEOUT_MS = 10 * 60 * 1000;
   // La sincronizacion corre tres veces al dia: mas de un dia sin datos nuevos pone la pildora en aviso.
@@ -1159,13 +1159,13 @@
     if (status) { status.textContent = text; status.hidden = !text; }
     setSyncBusy(busy);
   }
-  // Proxima corrida automatica del workflow (7:00, 12:00 y 17:00 de Lima; GitHub puede demorarla unos minutos).
+  // Lectura posterior a Nexus; GitHub puede retrasar la corrida programada.
   function nextAutoSync() {
     const lima = new Date(Date.now() - 5 * 3600000);
     const hour = lima.getUTCHours() + lima.getUTCMinutes() / 60;
-    const next = [7, 12, 17].find(value => value > hour);
-    const label = value => value === 12 ? '12:00 m.' : `${value > 12 ? value - 12 : value}:00 ${value < 12 ? 'a. m.' : 'p. m.'}`;
-    return next ? `Hoy, ${label(next)}` : `Mañana, ${label(7)}`;
+    const next = [6.5, 13.5, 18.5].find(value => value > hour);
+    const label = value => `${String(Math.floor(value)).padStart(2, '0')}:30`;
+    return `${next ? `Hoy, ${label(next)}` : `Mañana, ${label(6.5)}`} · ${SYNC_SCHEDULE}`;
   }
   function renderStatus() {
     const set = (id, text) => { const node = document.getElementById(id); if (node) node.textContent = text; };
