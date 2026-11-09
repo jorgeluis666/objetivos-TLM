@@ -222,9 +222,12 @@ def month_rows(paths):
         raise errors[0]
     main = [row for row in nexus if row.get('level') == 'ad']
     segments = [row for row in nexus if row.get('level') == 'segment']
+    # El mes entero por entidad viaja aparte: no entra en los totales ni en el desglose, pero tiene que
+    # llegar hasta el final, porque es lo unico que trae el alcance sin duplicar.
+    whole = [row for row in nexus if row.get('level') in MONTH_LEVELS]
     nexus_days = {row['day'] for row in main}
     if not nexus_days:
-        return exported
+        return exported + whole
     segment_days = {row['day'] for row in segments}
     export_days = {row['day'] for row in exported}
     extra = {}
@@ -262,6 +265,7 @@ def month_rows(paths):
         if row['day'] in nexus_days:
             row['only'] = 'segment'
         rows.append(row)
+    rows += whole
     return rows
 
 
