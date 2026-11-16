@@ -468,6 +468,47 @@ def campaigns_of(rows):
     return sorted(campaigns, key=lambda c: (order.get(c['group'], 3), -c['spend']))
 
 
+def period_entry(rows, end):
+    """Las cifras del mes contadas hasta `end`: lo mismo que el mes, pero cortado en ese dia."""
+    main = [row for row in rows if row['day'] <= end]
+    campaigns = campaigns_of(main)
+    if not campaigns:
+        return None
+    days = sorted(row['day'] for row in main if num(row.get('spend')) > 0)
+    if not days:
+        return None
+    totals = zero()
+    for row in main:
+        add(totals, row)
+    by_group = {}
+    for campaign in campaigns:
+        by_group[campaign['group']] = round(by_group.get(campaign['group'], 0) + campaign['spend'], 2)
+    return {'firstDay': days[0].isoformat(), 'lastDay': end.isoformat(), 'kpis': rounded(totals),
+            'spendByGroup': by_group, 'campaigns': campaigns, 'ads': ads_table(main)}
+
+
+def week_periods(rows, year, month_number, last_day):
+    """Los periodos de descarga del mes en curso: del 1 al 8, del 1 al 15, del 1 al 22...
+
+    El reporte del cliente cierra los domingos, asi que el mes que todavia corre se ofrece por semanas
+    enteras: cada corte va del dia 1 al domingo, y los dias sueltos de la semana que corre esperan a su
+    domingo en lugar de entrar en un reporte a medias. Un mes cerrado no lleva cortes: va completo.
+
+    El alcance sin duplicar no viaja en el corte: Nexus lo manda por mes entero, y recortarlo a una
+    semana diria otra cosa. Cada lamina cae entonces en la suma de los dias, que ya va rotulada."""
+    periods = []
+    day = date(year, month_number, 1)
+    while day <= last_day:
+        # El domingo del dia 1 al 6 cerraria una semana que empezo el mes pasado: el primer corte es el
+        # primer domingo que deja al menos una semana completa dentro del mes.
+        if day.weekday() == 6 and day.day >= 7:
+            entry = period_entry(rows, day)
+            if entry:
+                periods.append(entry)
+        day += timedelta(days=1)
+    return periods
+
+
 def sheet_ids(drive):
     """IDs de Drive de cada hoja, tomados del manifest que deja drive-download.py (si existe)."""
     try:
@@ -574,6 +615,8 @@ def build(drive, weekly_report=False):
     warnings_list = [f'"{item["name"]}" (carpeta {name}) no se pudo descargar de Drive en esta sincronizacion '
                      f'({item["error"]}); se vuelve a intentar en la proxima.' for name, item in failed]
     months, all_rows = [], []
+    # Las filas que cuentan de cada mes, para cortar despues el mes en curso en sus cierres de semana.
+    rows_by_month = {}
     for index, month in enumerate(MONTHS):
         paths = month_files(folder, month)
         entry = {'name': month, 'status': 'sin-datos', 'period': None, 'sheet': None, 'firstDay': None, 'lastDay': None,
@@ -647,6 +690,7 @@ def build(drive, weekly_report=False):
         if end:
             entry['firstDay'] = date(YEAR, index + 1, 1).isoformat()
             entry['lastDay'] = end.isoformat()
+        rows_by_month[index] = main
 
     with_data = [i for i, month in enumerate(months) if month['kpis']]
     cutoff = None
@@ -663,6 +707,13 @@ def build(drive, weekly_report=False):
         month['status'] = 'cerrado' if closed else 'parcial'
         month['period'] = f'1 - {end} {month["name"]} {YEAR}'
         cutoff = date(YEAR, index + 1, end).isoformat()
+        # El generador de reporte descarga el mes en curso por semanas cerradas (1 - 8, 1 - 15, ...) y el
+        # mes cerrado completo. Sin cortes (todavia no cierra la primera semana) se queda con el mes a hoy.
+        # Solo en data/tlm-report-2026.json: es el archivo que lee el generador, y el del tablero no los usa.
+        if weekly_report and not closed:
+            cuts = week_periods(rows_by_month.get(index, []), YEAR, index + 1, date.fromisoformat(month['lastDay']))
+            if cuts:
+                month['periods'] = cuts
     for index in range(with_data[-1] if with_data else 0):
         month = months[index]
         # Si la hoja esta en Drive pero no bajo, ya tiene su aviso de descarga.
@@ -679,7 +730,8 @@ def build(drive, weekly_report=False):
         'source': 'Exportaciones de Meta Ads (Google Drive)',
         'platform': {'key': 'meta', 'label': 'Meta Ads', 'currency': CURRENCY, 'symbol': 'S/'},
         'folderId': folder_id or os.environ.get('TLM_META_FOLDER_ID', '1lpi0wzaLuwL3MWMKBNtHBHJyDBD6p8Ie'),
-        # Orden de las columnas de months[].ads, que van en filas para que el archivo no pese el doble.
+        # Orden de las columnas de months[].ads y de months[].periods[].ads, que van en filas para que el
+        # archivo no pese el doble.
         'adColumns': AD_TABLE_COLUMNS,
         'warnings': warnings_list,
         'months': months,

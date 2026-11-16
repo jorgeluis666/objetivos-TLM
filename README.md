@@ -253,17 +253,30 @@ Modulo con dos pestanas (`js/reports-archive.js` y `js/report-week.js`):
   fino y acentos en azul. Diez laminas: portada, contenido, resumen ejecutivo, distribucion de la inversion,
   una lamina por objetivo (Ventas e-commerce, Mensajes WhatsApp, Mensajes a tienda y Reconocimiento),
   conclusiones con proximos pasos y cierre.
-  - Datos: `data/tlm-ads-2026.json`, el mismo barrido de Meta que alimenta Gasto publicitario, con una fila
-    por anuncio del mes y su conjunto. Se elige el mes arriba; el periodo va del dia 1 al ultimo dia con datos.
+  - Datos: `data/tlm-report-2026.json`, el mismo barrido de Meta que alimenta Gasto publicitario pero cerrado
+    al ultimo domingo del mes en curso (`scripts/build-ads-data.py` lo escribe aparte de
+    `data/tlm-ads-2026.json`, que el resto del tablero sigue leyendo hasta el ultimo dia con datos). Se elige
+    el periodo arriba y siempre empieza el dia 1.
+  - **El periodo avanza con el mes, por semanas cerradas** (desde la v1.8.0 del generador): el mes en curso se
+    ofrece cortado en sus domingos (1 - 8, 1 - 15, 1 - 22...), que es cuando cierra el reporte del cliente, y
+    los dias sueltos de la semana que corre esperan a su domingo en lugar de entrar a medias. El mes que ya
+    cerro va completo ("mes completo" en el selector). Los cortes los calcula `week_periods()` y viajan en
+    `months[].periods` de `data/tlm-report-2026.json` (mismas columnas que `months[].ads`); un mes en curso que
+    todavia no cierra su primera semana se queda con los dias que lleva, y un mes que cierra deja de ofrecer
+    sus semanas (esos PDF ya estan en la pestana Documentos). El alcance sin duplicar no entra en un corte:
+    Nexus lo manda por mes entero, asi que la semana cae en la suma de los dias y la lamina lo rotula.
+  - Pruebas: `node --test tests/report-periods.test.cjs tests/report-cutoff.test.cjs` y
+    `python tests/test_report_cutoff.py`.
   - Las dos campanas de mensajes van en laminas distintas porque no son lo mismo: el conjunto de WhatsApp
     general apunta a publico amplio y el de tienda solo al radio de 3 km alrededor del local (se reconoce por
     el nombre del conjunto), asi que sus costos por conversacion no son comparables. Si un mes no tuvo
     campana local, esa lamina no se dibuja.
   - Los textos (bajada, destacado, analisis, conclusiones y proximos pasos) vienen propuestos con los numeros;
     se reescriben con un clic sobre la misma lamina (`**texto**` va en negrita) y quedan guardados por mes en
-    el navegador (`tlm-report-notes-v2`). "Restaurar textos" vuelve a los propuestos.
+    el navegador (`tlm-report-notes-v2`), no por semana: el relato acompana al periodo mientras el mes avanza. "Restaurar textos" vuelve a los propuestos.
   - "Descargar PDF" abre la impresion del navegador (una lamina por pagina, 1280x720) con el nombre
-    `The-Little-Market-Reporte-Meta-Ads-<Mes>-<Ano>`.
+    `The-Little-Market-Reporte-Meta-Ads-<Mes>-<Ano>`, con el sufijo del periodo (`_1-8`) mientras el mes
+    corre, asi dos semanas del mismo mes no se pisan.
   - **Los numeros son los de la plataforma** (desde la v1.12.0): los dias que trae la pestana "Nexus Meta"
     se cuentan con las filas de la API y cuadran al centimo con Ads Manager. En octubre de 2026 el tablero
     daba S/ 1,115.25 y 164 conversaciones y ahora da S/ 1,120.56 y 165, que es lo que dice la plataforma.

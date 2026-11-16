@@ -15,7 +15,8 @@ const server=http.createServer((req,res)=>{let p=path.resolve(root,'.'+decodeURI
 let snapshotCommit=null;
 function selectClosedSnapshot(){
  if(!config.periodSource)return;
- const matches=text=>{const d=JSON.parse(text);let m;if(config.kind==='tlm')m=d.months?.[Number(end.slice(5,7))-1];else m=d.months?.find(m=>m.id===end.slice(0,7));return config.kind==='tlm'?m?.lastDay===end:config.kind==='royal'?m?.meta?.coverage?.end===end&&m?.google?.coverage?.end===end:m?.period?.end===end;};
+ // A snapshot serves the closing date when its month ends there or carries that week's cut (1 - 8, 1 - 15...).
+ const matches=text=>{const d=JSON.parse(text);let m;if(config.kind==='tlm')m=d.months?.[Number(end.slice(5,7))-1];else m=d.months?.find(m=>m.id===end.slice(0,7));return config.kind==='tlm'?(m?.lastDay===end||(m?.periods||[]).some(p=>p.lastDay===end)):config.kind==='royal'?m?.meta?.coverage?.end===end&&m?.google?.coverage?.end===end:m?.period?.end===end;};
  if(matches(fs.readFileSync(path.join(root,config.periodSource),'utf8')))return;
  // Use the latest published snapshot for the requested closing date, never relabel today's totals.
  const revisions=cp.execFileSync('git',['log','-150','--format=%H','--',config.periodSource],{cwd:root,encoding:'utf8'}).trim().split(/\s+/);
@@ -54,8 +55,11 @@ async function main(){
    }
    const selector=config.kind==='royal'?(type==='monthly'?'#rpt-select':'#acc-select'):'#week-select';
    const value=config.kind==='tp'?`m:${from.slice(0,7)}:${Number(end.slice(8))}`:config.kind==='amador'?`${from.slice(0,7)}:${Number(end.slice(8))}`:config.kind==='tierra'?`avance:${end}`:config.kind==='royal'?(type==='monthly'?from.slice(0,7):end):from.slice(0,7);
-   await page.waitForFunction((s,v)=>[...document.querySelectorAll(s+' option')].some(o=>o.value===v),{timeout:90000},selector,value);
-   await page.select(selector,value);
+   // The Little Market's running month is offered by closed weeks ("2026-11@08"); a closed month keeps
+   // the plain month option, so the week cut is tried first and the month is the fallback.
+   const values=config.kind==='tlm'?[`${from.slice(0,7)}@${end.slice(8)}`,value]:[value];
+   await page.waitForFunction((s,vs)=>vs.some(v=>[...document.querySelectorAll(s+' option')].some(o=>o.value===v)),{timeout:90000},selector,values);
+   await page.select(selector,await page.evaluate((s,vs)=>vs.find(v=>[...document.querySelectorAll(s+' option')].some(o=>o.value===v)),selector,values));
    const deck=config.kind==='royal'?'#rpt-report .rpt':'#week-doc';
    await page.waitForSelector(deck+' section',{timeout:60000});
    await page.evaluate(()=>document.fonts.ready);

@@ -26,5 +26,17 @@ class ReportCutoffTest(unittest.TestCase):
         self.assertEqual(len(rows), 10)
 
 
+    def test_week_periods_cuts_on_closed_sundays(self):
+        rows = [{'day': date(2026, 11, day), 'spend': 10, 'impressions': 100, 'campaign': 'E-Commerce | LR | Ventas',
+                 'ad': 'A', 'objective': 'Ventas'} for day in range(1, 19)]
+        cuts = module.week_periods(rows, 2026, 11, date(2026, 11, 18))
+        # El domingo 1 cerraria una semana que empezo en octubre: el primer corte es el del dia 8.
+        self.assertEqual([cut['lastDay'] for cut in cuts], ['2026-11-08', '2026-11-15'])
+        self.assertEqual([cut['kpis']['spend'] for cut in cuts], [80, 150])
+        self.assertEqual(cuts[0]['ads'][0][module.AD_TABLE_COLUMNS.index('spend')], 80)
+        # Antes del primer domingo no hay corte: el mes se queda con los dias que lleva.
+        self.assertEqual(module.week_periods(rows, 2026, 11, date(2026, 11, 5)), [])
+
+
 if __name__ == '__main__':
     unittest.main()

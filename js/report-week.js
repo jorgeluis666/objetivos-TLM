@@ -8,6 +8,8 @@
   // No trae datos nuevos: sale de data/tlm-ads-2026.json (scripts/build-ads-data.py), el mismo barrido de
   // Meta Ads que alimenta el resto del tablero, con una fila por anuncio del mes y su conjunto. El reporte
   // acumula del dia 1 al ultimo domingo cerrado; el generador filtra los datos diarios antes de sumar.
+  // Arriba se elige el periodo: el mes que ya cerro se descarga completo y el que corre, por semanas
+  // cerradas (1 - 8, 1 - 15, 1 - 22...), porque el reporte del cliente cierra los domingos.
   //
   // Las dos campañas de mensajes van en laminas distintas porque no son lo mismo: el conjunto de WhatsApp
   // general apunta a publico amplio y el de tienda solo al radio de 3 km alrededor del local, asi que sus
@@ -114,20 +116,26 @@
   // Las filas de anuncio llegan en columnas (pesan la mitad): aqui vuelven a ser objetos.
   function expand(json) {
     const at = Object.fromEntries((json.adColumns || []).map((name, index) => [name, index]));
+    const adsOf = rows => (rows || []).map(row => {
+      const ad = { name: String(row[at.name] || '(sin nombre)'), campaign: String(row[at.campaign] || ''), adSet: String(row[at.adSet] || ''), group: String(row[at.group] || 'Otros'), resultType: String(row[at.resultType] || ''), url: safeUrl(row[at.url]) };
+      METRICS.forEach(field => { ad[field] = Number(row[at[field]]) || 0; });
+      return ad;
+    });
+    const withAds = ads => ads.some(ad => ad.spend > 0 || ad.impressions > 0);
+    // Cada mes se abre en los periodos que se pueden descargar: el mes cerrado va completo y el mes en
+    // curso, por semanas cerradas (1 - 8, 1 - 15, 1 - 22...), del mas reciente al mas antiguo.
     const months = (json.months || []).map((month, index) => {
       if (!month || !month.kpis) return null;
-      const ads = (month.ads || []).map(row => {
-        const ad = { name: String(row[at.name] || '(sin nombre)'), campaign: String(row[at.campaign] || ''), adSet: String(row[at.adSet] || ''), group: String(row[at.group] || 'Otros'), resultType: String(row[at.resultType] || ''), url: safeUrl(row[at.url]) };
-        METRICS.forEach(field => { ad[field] = Number(row[at[field]]) || 0; });
-        return ad;
-      });
-      if (!ads.some(ad => ad.spend > 0 || ad.impressions > 0)) return null;
-      return {
-        id: `${json.year}-${String(index + 1).padStart(2, '0')}`,
+      const ads = adsOf(month.ads);
+      if (!withAds(ads)) return null;
+      const id = `${json.year}-${String(index + 1).padStart(2, '0')}`;
+      const base = {
+        id,
+        monthId: id,
         index,
         name: month.name,
         year: json.year,
-        firstDay: `${json.year}-${String(index + 1).padStart(2, '0')}-01`,
+        firstDay: `${id}-01`,
         lastDay: month.lastDay,
         closed: month.status === 'cerrado',
         kpis: month.kpis,
@@ -140,8 +148,17 @@
         campaigns: month.campaigns || [],
         ads,
       };
+      const cuts = (month.periods || []).map(period => {
+        const periodAds = adsOf(period.ads);
+        if (!withAds(periodAds)) return null;
+        // El alcance sin duplicar llega por mes entero: una semana se queda con la suma de los dias,
+        // que cada lamina ya rotula como tal.
+        return { ...base, id: `${id}@${period.lastDay.slice(8)}`, lastDay: period.lastDay, kpis: period.kpis, unique: {}, campaigns: period.campaigns || [], ads: periodAds };
+      }).filter(Boolean).reverse();
+      // Un mes en curso que todavia no cierra su primera semana se queda con los dias que lleva.
+      return cuts.length ? cuts : [base];
     }).filter(Boolean);
-    return { months: months.reverse(), syncedAt: json.syncedAt, cutoff: json.cutoff };
+    return { periods: [].concat(...months.reverse()), syncedAt: json.syncedAt, cutoff: json.cutoff };
   }
 
   // ── Objetivos y laminas ────────────────────────────────────────────────
@@ -332,6 +349,7 @@
         monthName,
         source: `Fuente: ${CHANNEL} · ${first} – ${last} ${shortMonth} ${month.year}`,
         footer: `${BRAND} · Reporte ${CHANNEL} · ${cap(monthName)} ${month.year}`,
+        // El mes que corre lleva el periodo en el nombre ("_1-8"): asi dos semanas del mismo mes no se pisan.
         file: `${SLUG}-Reporte-${CHANNEL.replace(/\s+/g, '-')}-${cap(monthName)}-${month.year}${month.closed ? '' : `_${first}-${last}`}`,
         period: `${first} – ${last} de ${monthName} de ${month.year}${first === 1 && month.closed ? ' (mes completo)' : ''}`,
       },
@@ -948,26 +966,31 @@
     const host = document.getElementById('week-report');
     const select = document.getElementById('week-select');
     if (!host || !data) return;
-    const months = data.months;
-    if (!months.length) {
+    const periods = data.periods;
+    if (!periods.length) {
       renderedFile = '';
       if (select) select.innerHTML = '<option value="">Sin meses con datos</option>';
       host.innerHTML = '<div class="panel"><div class="empty-state"><strong>Todavía no hay datos para el reporte</strong><span>El reporte se arma con las descargas de Meta Ads de la carpeta de Drive. En cuanto haya un mes con entregas, aparece aquí.</span></div></div>';
       return;
     }
-    if (!months.some(month => month.id === selected)) selected = months[0].id;
-    const month = months.find(item => item.id === selected);
+    if (!periods.some(period => period.id === selected)) selected = periods[0].id;
+    const month = periods.find(item => item.id === selected);
     if (select) {
-      select.innerHTML = months.map(item => {
+      select.innerHTML = periods.map(item => {
         const first = Number(item.firstDay.slice(8, 10));
         const last = Number(item.lastDay.slice(8, 10));
-        return `<option value="${esc(item.id)}"${item.id === selected ? ' selected' : ''}>${esc(`${item.name} ${item.year} · ${first} – ${last} ${SHORT[item.index]}`)}${item.closed ? '' : ' · mes en curso'}</option>`;
+        // El mes cerrado dice "mes completo" para que se vea que se puede descargar entero; el que corre,
+        // que lo que se descarga es la semana cerrada.
+        const tag = item.closed ? ' · mes completo' : ' · mes en curso';
+        return `<option value="${esc(item.id)}"${item.id === selected ? ' selected' : ''}>${esc(`${item.name} ${item.year} · ${first} – ${last} ${SHORT[item.index]}${tag}`)}</option>`;
       }).join('');
     }
 
     const report = buildReport(month);
     renderedFile = report.labels.file;
-    const notes = readNotes()[month.id] || {};
+    // Los textos escritos a mano se guardan por mes, no por semana: el relato sigue siendo el mismo y
+    // acompana al periodo mientras el mes avanza.
+    const notes = readNotes()[month.monthId] || {};
     const pages = { summary: 3, distribution: 4, firstSection: 5, conclusions: 5 + report.sections.length };
     const total = pages.conclusions + 1;
     host.innerHTML = `
@@ -981,7 +1004,7 @@
         ${closingPage()}
       </div>`;
     fitDeck();
-    wireEditables(host, month.id);
+    wireEditables(host, month.monthId);
   }
 
   async function renderModel() {
@@ -1014,7 +1037,8 @@
       document.getElementById('week-select')?.addEventListener('change', event => { selected = event.target.value; render(); });
       document.getElementById('week-print')?.addEventListener('click', printReport);
       document.getElementById('week-reset')?.addEventListener('click', () => {
-        if (selected && global.confirm('Se descartan los textos editados de este mes y vuelven los propuestos. ¿Continuar?')) { resetNotes(selected); render(); }
+        const period = data?.periods.find(item => item.id === selected);
+        if (period && global.confirm('Se descartan los textos editados de este mes y vuelven los propuestos. ¿Continuar?')) { resetNotes(period.monthId); render(); }
       });
       if (host && typeof global.ResizeObserver === 'function') {
         resizeObserver = new global.ResizeObserver(fitDeck);
