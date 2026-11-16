@@ -6,8 +6,11 @@ const path = require('node:path');
 
 test('Report renders the November cutoff in selector, cover and PDF filename', async () => {
   const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/tlm-report-2026.json'), 'utf8'));
-  // Fix the UI fixture to the requested week; the production dataset advances each week.
-  data.months = data.months.map((month, index) => index === 10 ? { ...month, lastDay: '2026-11-08', status: 'parcial' } : null);
+  // Fix the UI fixture to the requested week; the production dataset advances each week and offers one
+  // period per closed week, so the later cuts are dropped here too.
+  data.months = data.months.map((month, index) => index === 10
+    ? { ...month, lastDay: '2026-11-08', status: 'parcial', periods: (month.periods || []).filter(period => period.lastDay <= '2026-11-08') }
+    : null);
   const host = { innerHTML: '', querySelectorAll: () => [] };
   const select = { innerHTML: '', addEventListener() {} };
   const button = { addEventListener() {} };
