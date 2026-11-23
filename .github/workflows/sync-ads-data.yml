@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '30 11,18,23 * * *' # 06:30, 13:30 y 18:30 Lima, después de Nexus; GitHub puede retrasarlo.
+    # Segundo intento si GitHub demora u omite el disparo principal. El commit
+    # automático sigue omitiéndose cuando no cambian los datos.
+    - cron: '35 12,19,0 * * *'
 
 permissions:
   contents: write
@@ -35,6 +38,9 @@ jobs:
 
       - name: Regenerar data/tlm-ads-2026.json y data/tlm-ads-daily.json
         run: python scripts/build-ads-data.py --root "$RUNNER_TEMP/tlm"
+
+      - name: Comprobar reglas del corte de reportes
+        run: python -m unittest discover -s tests
 
       - name: Actualizar el catalogo de Archivo de Reportes
         run: python scripts/update-reports-catalog.py --root "$RUNNER_TEMP/tlm"
